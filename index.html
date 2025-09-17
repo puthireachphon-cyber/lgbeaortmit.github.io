@@ -82,6 +82,8 @@
             width: 80px;
             height: 112px;
             perspective: 1000px;
+            position: relative;
+            transition: all 0.3s ease-in-out;
         }
         .card-inner {
             position: relative;
@@ -90,16 +92,13 @@
             transition: transform 0.6s;
             transform-style: preserve-3d;
         }
-        .card.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
         .card-face {
             position: absolute;
             width: 100%;
             height: 100%;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
-            @apply rounded-lg border-2 border-gray-400;
+            @apply rounded-lg border-2 border-gray-400 shadow-md;
         }
         .card-front {
             background: white;
@@ -115,26 +114,33 @@
             transform: rotateY(180deg);
             @apply border-purple-300;
         }
-        .card-rank {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .card-suit {
-            font-size: 1.5rem;
-        }
+        .card-rank { font-size: 1.5rem; font-weight: bold; }
+        .card-suit { font-size: 1.5rem; }
         .text-red-600 { color: #dc2626; }
         .text-black { color: #000; }
         
+        /* Player hand styles */
+        .player-hand .card {
+            margin-right: -55px; /* Overlap cards */
+        }
+        .player-hand.is-current-user .card:hover {
+            transform: translateY(-20px) scale(1.08);
+            z-index: 100;
+            cursor: pointer;
+        }
+
         /* Player slot styles */
         .player-slot {
-            @apply flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-600 transition-all duration-300;
+            @apply flex flex-col items-center justify-between p-2 rounded-lg border-2 border-gray-600 transition-all duration-300 min-h-[180px];
         }
         .player-slot.active-turn {
-            @apply border-yellow-400 shadow-lg shadow-yellow-500/20;
+            @apply border-yellow-400 shadow-lg shadow-yellow-500/20 bg-gray-900/50;
             transform: scale(1.05);
         }
-        .player-slot.is-banker {
-            @apply border-green-400 bg-green-900/50;
+        
+        /* Game Table Piles */
+        .game-pile {
+             @apply w-[90px] h-[122px] rounded-lg flex items-center justify-center text-center font-bold text-lg;
         }
     </style>
 </head>
@@ -201,7 +207,7 @@
         </div>
 
         <!-- Game Page -->
-        <div id="game-page" class="page flex flex-col justify-between p-2 lg:p-4 bg-green-800 bg-opacity-50">
+        <div id="game-page" class="page flex flex-col justify-between p-2 lg:p-4 bg-green-900/70 bg-cover" style="background-image: url('https://www.transparenttextures.com/patterns/felt.png');">
             <!-- Top Bar -->
             <div class="flex justify-between items-center px-4">
                  <button id="leave-room-button" class="btn-secondary">Leave Room</button>
@@ -211,6 +217,11 @@
 
             <!-- Game Table -->
             <div class="relative flex-grow flex items-center justify-center">
+                <!-- Central Piles -->
+                <div class="absolute flex gap-8">
+                    <div id="draw-pile-container" class="game-pile"></div>
+                    <div id="discard-pile-container" class="game-pile"></div>
+                </div>
                 <!-- Player slots (max 6 players) -->
                 <div id="player-slots-container" class="grid grid-cols-3 gap-4 w-full max-w-7xl mx-auto">
                     <!-- Player slots will be dynamically added here -->
@@ -249,7 +260,6 @@
 
         // --- IMPORTANT ---
         // REPLACE THIS WITH YOUR WEB APP'S FIREBASE CONFIGURATION
-        // You can find this in your Firebase project settings.
         const firebaseConfig = {
             apiKey: "AIzaSyCd7dKd-WeIyiC_i2PbgeWrshEXP5tDFbY",
             authDomain: "koyreachtopup.firebaseapp.com",
@@ -265,12 +275,7 @@
         const db = getDatabase(app);
         
         // App State
-        let currentUser = {
-            id: null,
-            name: null,
-            money: 0,
-            currentRoomId: null,
-        };
+        let currentUser = { id: null, name: null, money: 0, currentRoomId: null };
         let currentRoomListener = null;
         let roomListListener = null;
         let inactivityTimer = null;
@@ -296,49 +301,36 @@
         const leaveRoomButton = document.getElementById('leave-room-button');
 
         // --- UTILITY FUNCTIONS ---
-        
         function navigateTo(pageName) {
             Object.values(pages).forEach(p => p.classList.remove('active'));
-            if (pages[pageName]) {
-                pages[pageName].classList.add('active');
-            }
+            if (pages[pageName]) pages[pageName].classList.add('active');
         }
-
-        function generateId(length = 6) {
-            return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
-        }
-
+        function generateId(length = 6) { return Math.random().toString(36).substring(2, 2 + length).toUpperCase(); }
         function showNotification(title, message, buttons = [{ text: 'OK', action: hideNotification }]) {
             document.getElementById('notification-title').innerText = title;
             document.getElementById('notification-message').innerText = message;
-            const buttonContainer = document.getElementById('notification-buttons');
-            buttonContainer.innerHTML = '';
+            const btnContainer = document.getElementById('notification-buttons');
+            btnContainer.innerHTML = '';
             buttons.forEach(btnInfo => {
                 const button = document.createElement('button');
                 button.innerText = btnInfo.text;
                 button.className = (btnInfo.class || 'btn-fancy') + ' mx-2';
                 button.onclick = btnInfo.action;
-                buttonContainer.appendChild(button);
+                btnContainer.appendChild(button);
             });
             document.getElementById('notification-overlay').classList.remove('hidden');
         }
-
-        function hideNotification() {
-            document.getElementById('notification-overlay').classList.add('hidden');
-        }
+        function hideNotification() { document.getElementById('notification-overlay').classList.add('hidden'); }
 
         // --- AUTH & USER MANAGEMENT ---
-
         async function initializeUser() {
             let userId = localStorage.getItem('sikuthai_userId');
             if (!userId) {
-                // New user flow
                 navigateTo('auth');
                 nameStep.classList.remove('hidden');
                 pinSetupStep.classList.add('hidden');
                 pinLoginStep.classList.add('hidden');
             } else {
-                // Returning user flow
                 const userSnapshot = await get(ref(db, `users/${userId}`));
                 if (userSnapshot.exists()) {
                     currentUser.id = userId;
@@ -348,105 +340,89 @@
                     nameStep.classList.add('hidden');
                     pinSetupStep.classList.add('hidden');
                     pinLoginStep.classList.remove('hidden');
+                    pinLoginContainer.querySelectorAll('input')[0].focus();
                 } else {
-                    // Data mismatch, treat as new user
                     localStorage.removeItem('sikuthai_userId');
                     initializeUser();
                 }
             }
         }
-
         function handlePinInput(container, onComplete) {
             const inputs = container.querySelectorAll('input');
             inputs.forEach((input, index) => {
-                input.addEventListener('keydown', (e) => {
+                input.addEventListener('keydown', e => {
                     if (e.key >= 0 && e.key <= 9) {
-                        inputs[index].value = ''; // Clear before setting
+                        inputs[index].value = '';
                         setTimeout(() => { if (index < inputs.length - 1) inputs[index + 1].focus(); }, 10);
                     } else if (e.key === 'Backspace') {
-                         setTimeout(() => { if (index > 0) inputs[index - 1].focus(); }, 10);
+                        setTimeout(() => { if (index > 0) inputs[index - 1].focus(); }, 10);
                     }
                 });
-                 input.addEventListener('input', () => {
+                input.addEventListener('input', () => {
                     const pin = Array.from(inputs).map(i => i.value).join('');
-                    if (pin.length === 4) {
-                        onComplete(pin);
-                    }
-                 });
+                    if (pin.length === 4) onComplete(pin);
+                });
             });
         }
-        
         submitNameButton.addEventListener('click', () => {
             if (nameInput.value.trim().length < 3) {
-                showNotification('Invalid Name', 'Your name must be at least 3 characters long.');
+                showNotification('Invalid Name', 'Name must be at least 3 characters.');
                 return;
             }
             nameStep.classList.add('hidden');
             pinSetupStep.classList.remove('hidden');
             pinSetupContainer.querySelectorAll('input')[0].focus();
         });
-
-        handlePinInput(pinSetupContainer, (pin) => {
+        handlePinInput(pinSetupContainer, pin => {
             submitPinSetupButton.disabled = false;
             submitPinSetupButton.onclick = async () => {
                 const newUserId = generateId(10);
-                const newUser = {
-                    name: nameInput.value.trim(),
-                    pin: pin,
-                    money: 5000, // Starting money
-                };
+                const newUser = { name: nameInput.value.trim(), pin, money: 5000 };
                 await set(ref(db, `users/${newUserId}`), newUser);
                 localStorage.setItem('sikuthai_userId', newUserId);
                 currentUser = { id: newUserId, ...newUser };
                 loginSuccess();
             };
         });
-
-        handlePinInput(pinLoginContainer, async (pin) => {
+        handlePinInput(pinLoginContainer, async pin => {
             const userRef = ref(db, `users/${currentUser.id}`);
             const userSnapshot = await get(userRef);
             if (userSnapshot.exists() && userSnapshot.val().pin === pin) {
                 currentUser = { id: currentUser.id, ...userSnapshot.val() };
                 loginSuccess();
             } else {
-                document.getElementById('pin-error').innerText = 'Incorrect PIN. Try again.';
+                document.getElementById('pin-error').innerText = 'Incorrect PIN.';
                 pinLoginContainer.querySelectorAll('input').forEach(i => i.value = '');
                 pinLoginContainer.querySelectorAll('input')[0].focus();
                 setTimeout(() => document.getElementById('pin-error').innerText = '', 2000);
             }
         });
-
         function loginSuccess() {
-            // Set up presence system
             const userStatusRef = ref(db, `users/${currentUser.id}/online`);
-            const userCurrentRoomRef = ref(db, `users/${currentUser.id}/currentRoomId`);
-            onValue(ref(db, '.info/connected'), (snap) => {
+            onValue(ref(db, '.info/connected'), snap => {
                 if (snap.val() === true) {
                     set(userStatusRef, true);
                     onDisconnect(userStatusRef).set(false);
-                    onDisconnect(userCurrentRoomRef).set(null);
+                    onDisconnect(ref(db, `users/${currentUser.id}/currentRoomId`)).set(null);
                 }
             });
-
             navigateTo('home');
             startHomePageListeners();
         }
 
         // --- HOME PAGE (LOBBY) ---
-
         function startHomePageListeners() {
             const userInfoDiv = document.getElementById('user-info');
-            onValue(ref(db, `users/${currentUser.id}`), (snap) => {
+            onValue(ref(db, `users/${currentUser.id}`), snap => {
                 if (snap.exists()) {
                     const userData = snap.val();
                     currentUser.money = userData.money;
                     userInfoDiv.innerHTML = `<span class="font-semibold">${currentUser.name}</span> | <span class="text-green-400 font-bold">${currentUser.money} R</span>`;
                 }
             });
-
             const roomsRef = ref(db, 'rooms');
-            if (roomListListener) roomListListener(); // Detach old listener
-            roomListListener = onValue(roomsRef, (snapshot) => {
+            if (roomListListener) roomListListener();
+            roomListListener = onValue(roomsRef, snapshot => {
                 const roomListDiv = document.getElementById('room-list');
                 roomListDiv.innerHTML = '';
                 const rooms = snapshot.val();
@@ -457,95 +433,52 @@
                             const roomCard = document.createElement('div');
                             roomCard.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-lg';
                             roomCard.innerHTML = `
-                                <div>
-                                    <h3 class="text-xl font-bold">Room ${roomId}</h3>
-                                    <p class="text-gray-400">Host: ${roomData.players[roomData.hostId]?.name || 'Unknown'}</p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-2xl font-bold">${playerCount}/6</span>
-                                    <p class="text-sm">${roomData.status}</p>
-                                </div>
-                                <button class="btn-secondary join-room-btn" data-room-id="${roomId}">Join</button>
-                            `;
+                                <div><h3 class="text-xl font-bold">Room ${roomId}</h3><p class="text-gray-400">Host: ${roomData.players[roomData.hostId]?.name || 'Unknown'}</p></div>
+                                <div class="text-center"><span class="text-2xl font-bold">${playerCount}/6</span><p class="text-sm">${roomData.status}</p></div>
+                                <button class="btn-secondary join-room-btn" data-room-id="${roomId}">Join</button>`;
                             roomListDiv.appendChild(roomCard);
                         }
                     });
                 }
-                 // Add click listeners to join buttons
-                document.querySelectorAll('.join-room-btn').forEach(button => {
-                    button.addEventListener('click', () => joinRoom(button.dataset.roomId));
-                });
+                document.querySelectorAll('.join-room-btn').forEach(btn => btn.onclick = () => joinRoom(btn.dataset.roomId));
             });
         }
-        
         createRoomButton.addEventListener('click', async () => {
             const newRoomId = generateId();
             const newRoom = {
-                hostId: currentUser.id,
-                status: 'waiting', // waiting, playing, finished
-                players: {
-                    [currentUser.id]: {
-                        name: currentUser.name,
-                        money: currentUser.money,
-                        status: 'waiting', // waiting, ready, playing
-                    }
-                },
-                createdAt: Date.now()
+                hostId: currentUser.id, status: 'waiting', createdAt: Date.now(),
+                players: { [currentUser.id]: { name: currentUser.name, status: 'waiting' } }
             };
             await set(ref(db, `rooms/${newRoomId}`), newRoom);
             joinRoom(newRoomId);
         });
-
         async function joinRoom(roomId) {
             const roomRef = ref(db, `rooms/${roomId}`);
             const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) {
-                showNotification('Error', 'Room does not exist.');
-                return;
-            }
-
+            if (!roomSnapshot.exists()) return showNotification('Error', 'Room does not exist.');
             const roomData = roomSnapshot.val();
             const playerCount = Object.keys(roomData.players || {}).length;
-
-            if (playerCount >= 6 && !roomData.players[currentUser.id]) {
-                showNotification('Room Full', 'This room has reached the maximum of 6 players.');
-                return;
-            }
-
-            if (currentUser.money < 500) {
-                 showNotification('Insufficient Funds', 'You need at least 500 R to play a round.');
-                 return;
-            }
+            if (playerCount >= 6 && !roomData.players[currentUser.id]) return showNotification('Room Full', 'Max 6 players.');
+            if (currentUser.money < 500) return showNotification('Insufficient Funds', 'You need 500 R to play.');
 
             currentUser.currentRoomId = roomId;
             await update(ref(db, `users/${currentUser.id}`), { currentRoomId: roomId });
-            await set(ref(db, `rooms/${roomId}/players/${currentUser.id}`), {
-                name: currentUser.name,
-                money: currentUser.money,
-                status: 'waiting',
-            });
-            
-            // Set up onDisconnect for room cleanup
+            await set(ref(db, `rooms/${roomId}/players/${currentUser.id}`), { name: currentUser.name, status: 'waiting' });
             onDisconnect(ref(db, `rooms/${roomId}/players/${currentUser.id}`)).remove();
-
-            if (roomListListener) roomListListener(); // Stop listening to room list
+            if (roomListListener) roomListListener();
             navigateTo('game');
             startGamePageListeners(roomId);
         }
 
         // --- GAME PAGE ---
-        
         function startGamePageListeners(roomId) {
             document.getElementById('room-id-display').innerText = roomId;
             const roomRef = ref(db, `rooms/${roomId}`);
-
-            if (currentRoomListener) currentRoomListener(); // Detach old listener if any
-            
+            if (currentRoomListener) currentRoomListener();
             currentRoomListener = onValue(roomRef, (snapshot) => {
                 if (!snapshot.exists()) {
-                    // Room was deleted, probably by host leaving
                     leaveRoomCleanup();
-                    showNotification('Room Closed', 'The host has left the room.', [{text: 'OK', action: () => { hideNotification(); navigateTo('home'); startHomePageListeners(); }}]);
+                    showNotification('Room Closed', 'The host has left.', [{ text: 'OK', action: () => { hideNotification(); navigateTo('home'); startHomePageListeners(); } }]);
                     return;
                 }
                 const roomData = snapshot.val();
@@ -553,165 +486,122 @@
                 resetInactivityTimer(roomId);
             });
         }
-
         function renderGame(roomData, roomId) {
             const players = roomData.players || {};
-            const playerCount = Object.keys(players).length;
+            const playerIds = Object.keys(players);
             const slotsContainer = document.getElementById('player-slots-container');
             slotsContainer.innerHTML = '';
 
-            // Render player slots
-            for (let i = 0; i < 6; i++) {
+            playerIds.forEach(playerId => {
+                const player = players[playerId];
                 const slot = document.createElement('div');
-                const playerId = Object.keys(players)[i];
-                if (playerId) {
-                    const player = players[playerId];
-                    slot.className = `player-slot bg-gray-900/50`;
-                    if (playerId === roomData.turn) slot.classList.add('active-turn');
-                    if (playerId === roomData.bankerId) slot.classList.add('is-banker');
+                slot.className = `player-slot`;
+                if (playerId === roomData.turn) slot.classList.add('active-turn');
+                
+                const cardCount = player.cards ? player.cards.length : (player.cardCount || 0);
 
-                    const cardsHtml = (player.cards || []).map(card => renderCard(card, player.id === currentUser.id || roomData.status === 'finished')).join('');
+                const handClass = playerId === currentUser.id ? 'is-current-user' : '';
+                const cardsHtml = (playerId === currentUser.id && player.cards)
+                    ? player.cards.map((card, index) => renderCard(card, true, index)).join('')
+                    : Array(cardCount).fill(0).map(() => renderCard({}, false)).join('');
 
-                    slot.innerHTML = `
-                        <div class="text-center">
-                            <div class="font-bold text-lg">${player.name} ${playerId === roomData.bankerId ? '👑' : ''}</div>
-                            <div class="text-sm ${player.status === 'busted' ? 'text-red-500' : 'text-yellow-400'}">${player.score || 0}</div>
-                        </div>
-                        <div class="flex justify-center gap-1 my-2 h-28 items-center">${cardsHtml}</div>
-                        <div class="text-xs text-gray-400">${player.status}</div>
-                    `;
-                } else {
-                    slot.className = 'player-slot border-dashed';
-                    slot.innerHTML = `<span class="text-gray-500">Empty Slot</span>`;
-                }
+                slot.innerHTML = `
+                    <div class="text-center">
+                        <div class="font-bold text-lg">${player.name}</div>
+                        <div class="text-sm text-yellow-400">Cards: ${cardCount}</div>
+                    </div>
+                    <div class="flex justify-center items-end player-hand ${handClass}" style="padding-right: ${cardCount > 1 ? '55px': '0'};">${cardsHtml}</div>`;
                 slotsContainer.appendChild(slot);
+            });
+
+            if (roomData.status === 'playing') {
+                const myHand = document.querySelector('.is-current-user');
+                if(myHand) {
+                    myHand.querySelectorAll('.card').forEach((cardEl, index) => {
+                        cardEl.onclick = () => playCard(roomId, index);
+                    });
+                }
             }
 
-            // Update Game Status
-            const gameStatusDiv = document.getElementById('game-status');
-            gameStatusDiv.textContent = roomData.message || roomData.status;
+            // Render piles
+            const topDiscard = roomData.discardPile ? roomData.discardPile[roomData.discardPile.length - 1] : null;
+            document.getElementById('discard-pile-container').innerHTML = topDiscard ? renderCard(topDiscard, true) : '';
+            document.getElementById('draw-pile-container').innerHTML = roomData.drawPile?.length > 0 ? `<div class="w-full h-full cursor-pointer">${renderCard({}, false)}<div class="absolute text-white font-bold text-2xl bg-black/50 rounded-full px-2">${roomData.drawPile.length}</div></div>` : '';
+            
+            if (roomData.drawPile?.length > 0) {
+                 document.getElementById('draw-pile-container').onclick = () => drawCard(roomId);
+            }
 
-            // Render Action Bar
+            document.getElementById('game-status').textContent = roomData.message || roomData.status;
+
+            // Action Bar
             const actionBar = document.getElementById('action-bar');
             actionBar.innerHTML = '';
-
-            if (roomData.status === 'waiting') {
-                if (playerCount >= 2 && roomData.hostId === currentUser.id) {
-                    const startButton = document.createElement('button');
-                    startButton.className = 'btn-fancy';
-                    startButton.innerText = 'Start Game';
-                    startButton.onclick = () => startGame(roomId);
-                    actionBar.appendChild(startButton);
-                }
-            } else if (roomData.status === 'playing' && roomData.turn === currentUser.id) {
-                const hitButton = document.createElement('button');
-                hitButton.className = 'btn-secondary';
-                hitButton.innerText = 'Hit (Draw)';
-                hitButton.onclick = () => playerAction(roomId, 'hit');
-                
-                const stayButton = document.createElement('button');
-                stayButton.className = 'btn-secondary';
-                stayButton.innerText = 'Stay';
-                stayButton.onclick = () => playerAction(roomId, 'stay');
-
-                actionBar.appendChild(hitButton);
-                actionBar.appendChild(stayButton);
-
-                // Start turn timer
-                clearTimeout(turnTimer);
-                turnTimer = setTimeout(() => playerAction(roomId, 'stay'), 10000); // Auto-stay after 10s
-                
+            if (roomData.status === 'waiting' && playerIds.length >= 2 && roomData.hostId === currentUser.id) {
+                const startBtn = document.createElement('button');
+                startBtn.className = 'btn-fancy';
+                startBtn.innerText = 'Start Game';
+                startBtn.onclick = () => startGame(roomId);
+                actionBar.appendChild(startBtn);
             } else if (roomData.status === 'finished') {
-                const playAgainButton = document.createElement('button');
-                playAgainButton.className = 'btn-fancy';
+                const playAgainBtn = document.createElement('button');
+                playAgainBtn.className = 'btn-fancy';
                 const hasVoted = roomData.playAgainVotes && roomData.playAgainVotes[currentUser.id];
-                playAgainButton.innerText = hasVoted ? 'Waiting for others...' : 'Play Again';
-                playAgainButton.disabled = hasVoted;
-                playAgainButton.onclick = () => votePlayAgain(roomId);
-                actionBar.appendChild(playAgainButton);
+                playAgainBtn.innerText = hasVoted ? 'Waiting...' : 'Play Again';
+                playAgainBtn.disabled = hasVoted;
+                playAgainBtn.onclick = () => votePlayAgain(roomId);
+                actionBar.appendChild(playAgainBtn);
             }
         }
-        
-        function renderCard(card, isFlipped) {
+        function renderCard(card, isVisible, index = -1) {
             const suitSymbols = { 'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠' };
             const suitColor = (card.suit === 'H' || card.suit === 'D') ? 'text-red-600' : 'text-black';
-            return `
-                <div class="card ${isFlipped ? 'flipped' : ''}">
-                    <div class="card-inner">
-                        <div class="card-face card-back"></div>
-                        <div class="card-face card-front">
-                            <div class="self-start ${suitColor}"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
-                            <div class="${suitColor}"><span class="text-3xl">${suitSymbols[card.suit]}</span></div>
-                            <div class="self-end ${suitColor} transform rotate-180"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            const back = `<div class="card-face card-back"></div>`;
+            const front = `
+                <div class="card-face card-front">
+                    <div class="self-start ${suitColor}"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
+                    <div class="${suitColor}"><span class="text-3xl">${suitSymbols[card.suit]}</span></div>
+                    <div class="self-end ${suitColor} transform rotate-180"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
+                </div>`;
+            return `<div class="card" data-index="${index}"><div class="card-inner" style="transform: ${isVisible ? 'none' : 'rotateY(180deg)'}">${front}${back}</div></div>`;
         }
-
         async function leaveRoom() {
             if (!currentUser.currentRoomId) return;
-            
             const roomId = currentUser.currentRoomId;
+            leaveRoomCleanup();
             const roomRef = ref(db, `rooms/${roomId}`);
             const roomSnapshot = await get(roomRef);
-
-            // Clean up timers and listeners
-            leaveRoomCleanup();
-
             if (roomSnapshot.exists()) {
                 const roomData = roomSnapshot.val();
-                const players = roomData.players || {};
-                
-                // Remove player from room
                 await remove(ref(db, `rooms/${roomId}/players/${currentUser.id}`));
-
-                const remainingPlayers = Object.keys(players).filter(id => id !== currentUser.id);
-
-                if (remainingPlayers.length === 0) {
-                    // If last player leaves, delete the room
-                    await remove(roomRef);
-                } else if (roomData.hostId === currentUser.id) {
-                    // If host leaves, assign a new host
-                    await update(roomRef, { hostId: remainingPlayers[0] });
-                }
+                const remainingPlayers = Object.keys(roomData.players || {}).filter(id => id !== currentUser.id);
+                if (remainingPlayers.length === 0) await remove(roomRef);
+                else if (roomData.hostId === currentUser.id) await update(roomRef, { hostId: remainingPlayers[0] });
             }
             navigateTo('home');
             startHomePageListeners();
         }
-        
         leaveRoomButton.addEventListener('click', () => {
-             showNotification('Leave Room', 'Are you sure you want to leave the game?', [
-                { text: 'Yes, Leave', action: leaveRoom, class: 'btn-secondary' },
-                { text: 'Cancel', action: hideNotification }
+             showNotification('Leave Room', 'Are you sure?', [
+                { text: 'Yes', action: leaveRoom, class: 'btn-secondary' }, { text: 'Cancel', action: hideNotification }
             ]);
         });
-        
         function leaveRoomCleanup() {
-             if (currentRoomListener) {
-                currentRoomListener(); // Detach Firebase listener
-                currentRoomListener = null;
-             }
+             if (currentRoomListener) { currentRoomListener(); currentRoomListener = null; }
              clearTimeout(inactivityTimer);
              clearTimeout(turnTimer);
              update(ref(db, `users/${currentUser.id}`), { currentRoomId: null });
              currentUser.currentRoomId = null;
         }
 
-        // --- GAME LOGIC ---
-
+        // --- NEW GAME LOGIC (CRAZY EIGHTS STYLE) ---
         function createDeck() {
             const suits = ['H', 'D', 'C', 'S'];
             const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
             let deck = [];
-            for (const suit of suits) {
-                for (const rank of ranks) {
-                    deck.push({ rank, suit });
-                }
-            }
+            ranks.forEach(rank => suits.forEach(suit => deck.push({ rank, suit })));
             return deck;
         }
-
         function shuffleDeck(deck) {
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -719,278 +609,214 @@
             }
             return deck;
         }
-        
-        function calculateScore(cards) {
-             let score = 0;
-             let aceCount = 0;
-             for (const card of cards) {
-                 if (['J', 'Q', 'K'].includes(card.rank)) {
-                     score += 10;
-                 } else if (card.rank === 'A') {
-                     aceCount += 1;
-                     score += 11;
-                 } else {
-                     score += parseInt(card.rank);
-                 }
-             }
-             while (score > 21 && aceCount > 0) {
-                 score -= 10;
-                 aceCount -= 1;
-             }
-             return score;
-        }
-
         async function startGame(roomId) {
             const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) return;
-
-            const roomData = roomSnapshot.val();
+            const roomSnap = await get(roomRef);
+            if (!roomSnap.exists()) return;
+            const roomData = roomSnap.val();
             const playerIds = Object.keys(roomData.players);
-
-            // Deduct money
+            
             const updates = {};
-            let canStart = true;
-            for (const playerId of playerIds) {
-                const playerRef = ref(db, `users/${playerId}`);
-                const playerSnap = await get(playerRef);
-                if (playerSnap.val().money < 500) {
-                    canStart = false;
-                    const brokePlayerName = roomData.players[playerId].name;
-                    showNotification('Game Cannot Start', `${brokePlayerName} does not have enough money (500 R) to play.`);
-                    break;
-                }
-                updates[`users/${playerId}/money`] = playerSnap.val().money - 500;
+            for (const id of playerIds) {
+                const pSnap = await get(ref(db, `users/${id}`));
+                if (pSnap.val().money < 500) return showNotification('Error', `${roomData.players[id].name} needs 500 R to play.`);
+                updates[`users/${id}/money`] = pSnap.val().money - 500;
             }
-            if(!canStart) return;
             await update(ref(db), updates);
 
-            // Game setup
-            const deck = shuffleDeck(createDeck());
-            const newBankerId = playerIds[Math.floor(Math.random() * playerIds.length)];
-            
+            let deck = shuffleDeck(createDeck());
             const updatedPlayers = {};
             playerIds.forEach(id => {
-                const playerCards = [deck.pop(), deck.pop()];
-                updatedPlayers[id] = {
-                    ...roomData.players[id],
-                    cards: playerCards,
-                    score: calculateScore(playerCards),
-                    status: 'playing'
-                };
+                updatedPlayers[id] = { ...roomData.players[id], cards: deck.splice(0, 7), cardCount: 7 };
             });
-            
-            // Determine first turn (player after banker)
-            const bankerIndex = playerIds.indexOf(newBankerId);
-            const firstTurnIndex = (bankerIndex + 1) % playerIds.length;
-            const firstTurnPlayerId = playerIds[firstTurnIndex];
+
+            let discardPile = [deck.pop()];
+            // Ensure starting card is not special
+            while(['A', 'Q', '2', '8'].includes(discardPile[0].rank)) {
+                deck.push(discardPile.pop());
+                deck = shuffleDeck(deck);
+                discardPile = [deck.pop()];
+            }
 
             await update(roomRef, {
                 status: 'playing',
-                deck: deck,
-                bankerId: newBankerId,
+                drawPile: deck,
+                discardPile: discardPile,
                 players: updatedPlayers,
-                turn: firstTurnPlayerId,
-                message: `${updatedPlayers[firstTurnPlayerId].name}'s turn`,
+                turn: playerIds[0],
+                playDirection: 1, // 1 for clockwise, -1 for counter-clockwise
+                message: `${updatedPlayers[playerIds[0]].name}'s turn`,
                 pot: playerIds.length * 500,
-                playAgainVotes: null, // Clear votes
+                activeSuit: discardPile[0].suit,
+                playAgainVotes: null,
             });
         }
-        
-        async function playerAction(roomId, action) {
-            clearTimeout(turnTimer);
+        async function playCard(roomId, cardIndex) {
             const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) return;
-            let roomData = roomSnapshot.val();
+            const roomSnap = await get(roomRef);
+            if (!roomSnap.exists()) return;
+            let roomData = roomSnap.val();
             
-            if (roomData.turn !== currentUser.id) return; // Not my turn
+            if (roomData.turn !== currentUser.id || roomData.status !== 'playing') return;
 
-            const updates = {};
-            const currentPlayer = roomData.players[currentUser.id];
+            const player = roomData.players[currentUser.id];
+            const card = player.cards[cardIndex];
+            const topDiscard = roomData.discardPile[roomData.discardPile.length-1];
+
+            const isValid = card.rank === '8' || card.rank === topDiscard.rank || card.suit === roomData.activeSuit;
+            if (!isValid) return showNotification("Invalid Move", "Card must match suit or rank.");
+
+            // Update state
+            player.cards.splice(cardIndex, 1);
+            player.cardCount = player.cards.length;
+            roomData.discardPile.push(card);
             
-            if (action === 'hit') {
-                const newCard = roomData.deck.pop();
-                currentPlayer.cards.push(newCard);
-                currentPlayer.score = calculateScore(currentPlayer.cards);
-                if (currentPlayer.score > 21) {
-                    currentPlayer.status = 'busted';
-                    action = 'stay'; // Force stay if busted
-                }
-                updates[`rooms/${roomId}/players/${currentUser.id}`] = currentPlayer;
-                updates[`rooms/${roomId}/deck`] = roomData.deck;
-            }
+            const updates = {
+                [`players/${currentUser.id}`]: player,
+                discardPile: roomData.discardPile,
+            };
 
-            if (action === 'stay') {
-                 currentPlayer.status = 'stayed';
-                 updates[`rooms/${roomId}/players/${currentUser.id}`] = currentPlayer;
+            if (player.cardCount === 0) {
+                // WINNER
+                await update(roomRef, updates);
+                await endGame(roomId, currentUser.id);
+                return;
             }
-
-            // Find next player
-            const playerIds = Object.keys(roomData.players);
-            const currentIndex = playerIds.indexOf(currentUser.id);
-            let nextPlayerId = null;
-            for (let i = 1; i <= playerIds.length; i++) {
-                const nextIndex = (currentIndex + i) % playerIds.length;
-                const potentialNextPlayerId = playerIds[nextIndex];
-                // Skip banker, find next playing player
-                if (potentialNextPlayerId !== roomData.bankerId && roomData.players[potentialNextPlayerId].status === 'playing') {
-                    nextPlayerId = potentialNextPlayerId;
+            
+            // Handle special cards and calculate next turn
+            let nextTurnData;
+            switch(card.rank) {
+                case '8': // Wild
+                    updates.activeSuit = null; // Pause game until suit is chosen
+                    showNotification('Choose a Suit', 'You played a Wild Card!', [
+                        { text: '♥', action: () => setWildSuit(roomId, 'H'), class: 'btn-secondary text-red-500 text-2xl' },
+                        { text: '♦', action: () => setWildSuit(roomId, 'D'), class: 'btn-secondary text-red-500 text-2xl' },
+                        { text: '♣', action: () => setWildSuit(roomId, 'C'), class: 'btn-secondary text-2xl' },
+                        { text: '♠', action: () => setWildSuit(roomId, 'S'), class: 'btn-secondary text-2xl' },
+                    ]);
                     break;
-                }
-            }
-
-            if (nextPlayerId) {
-                updates[`rooms/${roomId}/turn`] = nextPlayerId;
-                updates[`rooms/${roomId}/message`] = `${roomData.players[nextPlayerId].name}'s turn`;
-            } else {
-                // All players have played, banker's turn
-                updates[`rooms/${roomId}/turn`] = roomData.bankerId;
-                updates[`rooms/${roomId}/message`] = `Banker's turn`;
+                case 'A': // Reverse
+                    roomData.playDirection *= -1;
+                    updates.playDirection = roomData.playDirection;
+                    nextTurnData = calculateNextTurn(roomData);
+                    break;
+                case 'Q': // Skip
+                    nextTurnData = calculateNextTurn(roomData, 2); // Skip 1 player
+                    break;
+                case '2': // Draw 2
+                    nextTurnData = calculateNextTurn(roomData);
+                    const targetPlayer = roomData.players[nextTurnData.nextPlayerId];
+                    if (roomData.drawPile.length < 2) reshuffleDeck(roomData);
+                    targetPlayer.cards.push(...roomData.drawPile.splice(0,2));
+                    targetPlayer.cardCount = targetPlayer.cards.length;
+                    updates[`players/${nextTurnData.nextPlayerId}`] = targetPlayer;
+                    updates.drawPile = roomData.drawPile;
+                    // Skip the player who drew
+                    nextTurnData = calculateNextTurn({...roomData, turn: nextTurnData.nextPlayerId});
+                    break;
+                default: // Normal card
+                    updates.activeSuit = card.suit;
+                    nextTurnData = calculateNextTurn(roomData);
+                    break;
             }
             
-            await update(ref(db), updates);
-
-            // If it's now the banker's turn, run banker logic after a short delay
-            if (!nextPlayerId) {
-                setTimeout(() => runBankerTurn(roomId), 1500);
+            if (nextTurnData) {
+                updates.turn = nextTurnData.nextPlayerId;
+                updates.message = nextTurnData.message;
             }
+            await update(roomRef, updates);
         }
-        
-        async function runBankerTurn(roomId) {
+        async function drawCard(roomId) {
             const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) return;
-            let roomData = roomSnapshot.val();
+            const roomSnap = await get(roomRef);
+            if (!roomSnap.exists()) return;
+            let roomData = roomSnap.val();
 
-            let banker = roomData.players[roomData.bankerId];
-            
-            // Banker hits until score is 17 or higher
-            while (banker.score < 17) {
-                const newCard = roomData.deck.pop();
-                banker.cards.push(newCard);
-                banker.score = calculateScore(banker.cards);
+            if (roomData.turn !== currentUser.id || roomData.status !== 'playing') return;
+            if (roomData.drawPile.length === 0) {
+                reshuffleDeck(roomData);
             }
-            
-            if (banker.score > 21) {
-                banker.status = 'busted';
-            } else {
-                banker.status = 'stayed';
-            }
-            
-            await update(ref(db, `rooms/${roomId}/players/${roomData.bankerId}`), banker);
-            await update(ref(db, `rooms/${roomId}/deck`), roomData.deck);
-            
-            // End the game after banker's turn
-            setTimeout(() => endGame(roomId), 1500);
-        }
+            if (roomData.drawPile.length === 0) return showNotification("Empty Deck", "No cards to draw.");
 
-        async function endGame(roomId) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) return;
-            let roomData = roomSnapshot.val();
+            const player = roomData.players[currentUser.id];
+            player.cards.push(roomData.drawPile.pop());
+            player.cardCount = player.cards.length;
 
-            const banker = roomData.players[roomData.bankerId];
-            const bankerScore = banker.status === 'busted' ? 0 : banker.score;
-            const playerIds = Object.keys(roomData.players);
-            const pot = roomData.pot || 0;
-            let moneyToBanker = 0;
-            let winners = [];
-
-            const moneyUpdates = {};
-
-            for (const playerId of playerIds) {
-                if (playerId === roomData.bankerId) continue;
-                const player = roomData.players[playerId];
-                const playerScore = player.status === 'busted' ? 0 : player.score;
-                
-                if (playerScore > bankerScore) {
-                    // Player wins
-                    winners.push(player.name);
-                    // In this simple version, banker pays player. We'll simulate by just not taking their money.
-                    // For a real game, banker would pay double. Here we just say they win.
-                    // For simplicity, winner just gets their bet back from the pot.
-                } else if (playerScore < bankerScore) {
-                    // Banker wins
-                    moneyToBanker += 500;
-                } else {
-                    // Push (tie)
-                    // Player gets their money back
-                }
-            }
-
-            // Distribute pot - complex logic simplified for now
-            // In this version, if there's one winner, they take the pot. If multiple, they split it.
-            // If banker wins all, banker takes the pot.
-            if(winners.length > 0){
-                const winningsPerWinner = Math.floor(pot / winners.length);
-                const winnerIds = playerIds.filter(id => winners.includes(roomData.players[id].name));
-                for(const winnerId of winnerIds) {
-                    const userRef = ref(db, `users/${winnerId}`);
-                    const userSnap = await get(userRef);
-                    moneyUpdates[winnerId] = (userSnap.val().money || 0) + winningsPerWinner;
-                }
-            } else { // Banker wins
-                const bankerRef = ref(db, `users/${roomData.bankerId}`);
-                const bankerSnap = await get(bankerRef);
-                moneyUpdates[roomData.bankerId] = (bankerSnap.val().money || 0) + pot;
-            }
-
-            // Apply money updates
-            for (const [userId, newMoney] of Object.entries(moneyUpdates)) {
-                await update(ref(db, `users/${userId}`), { money: newMoney });
-            }
-
-            let message = `Banker score: ${bankerScore}. `;
-            if(winners.length > 0) {
-                message += `Winners: ${winners.join(', ')}!`;
-            } else {
-                message += 'Banker wins the round!';
-            }
+            const nextTurnData = calculateNextTurn(roomData);
 
             await update(roomRef, {
-                status: 'finished',
-                turn: null,
-                message: message
+                [`players/${currentUser.id}`]: player,
+                drawPile: roomData.drawPile,
+                turn: nextTurnData.nextPlayerId,
+                message: nextTurnData.message
             });
         }
-        
+        function calculateNextTurn(roomData, skipCount = 1) {
+            const playerIds = Object.keys(roomData.players);
+            const currentIndex = playerIds.indexOf(roomData.turn);
+            const nextIndex = (currentIndex + (skipCount * roomData.playDirection) + playerIds.length) % playerIds.length;
+            const nextPlayerId = playerIds[nextIndex];
+            return { nextPlayerId, message: `${roomData.players[nextPlayerId].name}'s turn`};
+        }
+        async function setWildSuit(roomId, suit) {
+            hideNotification();
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnap = await get(roomRef);
+            if (!roomSnap.exists()) return;
+            let roomData = roomSnap.val();
+            const nextTurnData = calculateNextTurn(roomData);
+            await update(roomRef, {
+                activeSuit: suit,
+                turn: nextTurnData.nextPlayerId,
+                message: `Suit is ${suit}. ${nextTurnData.message}`
+            });
+        }
+        function reshuffleDeck(roomData) {
+            const topCard = roomData.discardPile.pop();
+            roomData.drawPile = shuffleDeck(roomData.discardPile);
+            roomData.discardPile = [topCard];
+        }
+        async function endGame(roomId, winnerId) {
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnap = await get(roomRef);
+            const roomData = roomSnap.val();
+            const winnerName = roomData.players[winnerId].name;
+            const pot = roomData.pot || 0;
+
+            const winnerRef = ref(db, `users/${winnerId}`);
+            const winnerSnap = await get(winnerRef);
+            await update(winnerRef, { money: (winnerSnap.val().money || 0) + pot });
+
+            await update(roomRef, { status: 'finished', turn: null, message: `${winnerName} wins the round!` });
+        }
         async function votePlayAgain(roomId) {
             await set(ref(db, `rooms/${roomId}/playAgainVotes/${currentUser.id}`), true);
-            const roomSnapshot = await get(ref(db, `rooms/${roomId}`));
-            const roomData = roomSnapshot.val();
+            const roomSnap = await get(ref(db, `rooms/${roomId}`));
+            const roomData = roomSnap.val();
             const votes = Object.keys(roomData.playAgainVotes || {}).length;
             const players = Object.keys(roomData.players || {}).length;
-            if (votes === players) {
-                startGame(roomId);
-            }
+            if (votes === players) startGame(roomId);
         }
-        
-        // --- TIMERS ---
+
+        // --- TIMERS & INIT ---
         function resetInactivityTimer(roomId) {
              clearTimeout(inactivityTimer);
              inactivityTimer = setTimeout(() => {
-                 showNotification('Inactivity Kick', 'You have been removed from the room due to inactivity.', [
+                 showNotification('Inactivity Kick', 'Removed for inactivity.', [
                      { text: 'OK', action: () => { hideNotification(); leaveRoom(); } }
                  ]);
              }, 60000); // 60 seconds
         }
-
-        // --- INITIALIZATION ---
         playButton.addEventListener('click', initializeUser);
         window.addEventListener('load', () => {
-             // Check if user was in a room
              const lastUserId = localStorage.getItem('sikuthai_userId');
-             if(lastUserId) {
+             if (lastUserId) {
                  get(ref(db, `users/${lastUserId}/currentRoomId`)).then(snap => {
-                     if(snap.exists() && snap.val() !== null) {
-                         // User was in a room, force them back to login to rejoin
-                         initializeUser();
-                     }
+                     if (snap.exists() && snap.val() !== null) initializeUser();
                  })
              }
         });
     </script>
 </body>
 </html>
+
