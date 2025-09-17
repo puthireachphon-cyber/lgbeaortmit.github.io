@@ -1,356 +1,255 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="km">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Sikuthai - លេងបៀរមិត្តយើង</title>
     
-    <link rel="manifest" href="manifest.json">
+    <!-- App-like experience when added to home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Sikuthai">
-    <link rel="apple-touch-icon" href="https://i.imgur.com/gLslm2I.png">
-    
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/1a1a1a/ffffff?text=SKT">
+    <link rel="icon" href="https://placehold.co/192x192/1a1a1a/ffffff?text=SKT">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --primary-bg: #1a1a1a;
-            --secondary-bg: #2c2c2c;
-            --accent-color: #f9a825;
-            --text-color: #ffffff;
-            --card-bg: #3e3e3e;
-            --success-color: #4caf50;
-            --error-color: #f44336;
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            overscroll-behavior: none;
+            touch-action: manipulation;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* Custom Khmer font for specific elements */
+        .font-koulen {
+            font-family: 'Koulen', cursive;
+        }
+        
+        /* Force landscape orientation on mobile */
+        @media (orientation: portrait) and (max-width: 768px) {
+            #app-container { display: none; }
+            #orientation-blocker { display: flex; }
+        }
+        @media (orientation: landscape), (min-width: 769px) {
+            #app-container { display: block; }
+            #orientation-blocker { display: none; }
         }
 
-        body, html {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background-color: var(--primary-bg);
-            color: var(--text-color);
-            overscroll-behavior: contain;
-        }
-
+        /* Page transition styles */
         .page {
-            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        
-        .page.active {
-            display: flex;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .button {
-            background-color: var(--accent-color);
-            color: var(--primary-bg);
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            margin-top: 20px;
-        }
-
-        .button:hover {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            opacity: 0;
             transform: scale(1.05);
-            background-color: #ffb74d;
-        }
-        
-        .button.secondary {
-            background-color: var(--secondary-bg);
-            color: var(--text-color);
-        }
-        
-        .button:disabled {
-            background-color: #555;
-            color: #888;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        h1 {
-            font-size: 3rem;
-            color: var(--accent-color);
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-
-        h2 {
-            font-size: 2rem;
-            color: #eee;
-            margin-bottom: 20px;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            border: 2px solid var(--secondary-bg);
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            font-size: 1.2rem;
-            text-align: center;
-        }
-
-        .input-field::placeholder {
-            color: #aaa;
-        }
-        
-        /* Home Page */
-        #home-page {
-            justify-content: space-between;
-        }
-        .header {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            position: absolute;
-            top: 0;
-        }
-        .user-info {
-            background: var(--secondary-bg);
-            padding: 10px 20px;
-            border-radius: 20px;
-        }
-        #room-list-container {
-            width: 100%;
-            max-width: 800px;
-            height: 60%;
-            background-color: var(--secondary-bg);
-            border-radius: 15px;
-            padding: 20px;
+            pointer-events: none;
             overflow-y: auto;
         }
-        .room-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            background-color: var(--card-bg);
-            margin-bottom: 10px;
-            border-radius: 10px;
+        .page.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
         }
-        .room-item button {
-            margin: 0;
-            padding: 10px 20px;
-            font-size: 1rem;
+
+        /* PIN input styles */
+        .pin-input {
+            width: 3rem; height: 4rem; text-align: center; font-size: 2rem;
         }
-        
-        /* Game Page */
-        #game-page {
-            justify-content: space-between;
+
+        /* Custom button styles */
+        .btn-fancy {
+            @apply px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-full shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95;
+        }
+        .btn-secondary {
+            @apply px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg shadow-md transform transition-transform duration-200 hover:bg-gray-600 hover:scale-105 active:scale-95;
+        }
+
+        /* Playing card styles */
+        .card {
+            width: 80px;
+            height: 112px;
+            perspective: 1000px;
+        }
+        .card-inner {
             position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
         }
-        #player-area {
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-face {
             position: absolute;
-            bottom: 10px;
             width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            @apply rounded-lg border-2 border-gray-400;
+        }
+        .card-front {
+            background: white;
+            color: black;
             display: flex;
-            justify-content: center;
-            gap: 20px;
-        }
-        .player-card {
-            background-color: var(--card-bg);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            border: 2px solid transparent;
-        }
-        .player-card.is-banker {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 15px var(--accent-color);
-        }
-        .player-card.is-turn {
-             animation: turn-glow 1.5s infinite;
-        }
-        @keyframes turn-glow {
-            0% { box-shadow: 0 0 5px var(--success-color); }
-            50% { box-shadow: 0 0 20px var(--success-color); }
-            100% { box-shadow: 0 0 5px var(--success-color); }
-        }
-        
-        .notification-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: none; /* Changed */
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            z-index: 100;
+            padding: 4px;
         }
-        .notification-overlay.active {
-            display: flex; /* Added */
+        .card-back {
+            background: linear-gradient(135deg, #4a148c, #880e4f);
+            transform: rotateY(180deg);
+            @apply border-purple-300;
         }
-        
-        .notification-box {
-            background-color: var(--secondary-bg);
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-        }
-        #countdown-timer {
-            font-size: 2.5rem;
-            color: var(--accent-color);
-            margin-top: 10px;
-        }
-
-        /* Orientation Lock Overlay */
-        #rotate-device-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--primary-bg);
-            z-index: 9999;
-            color: white;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-        #rotate-device-overlay p {
+        .card-rank {
             font-size: 1.5rem;
-            margin-top: 20px;
+            font-weight: bold;
         }
-        #rotate-device-overlay svg {
-            width: 100px;
-            height: 100px;
-            animation: rotate-animation 2s infinite linear;
+        .card-suit {
+            font-size: 1.5rem;
         }
-        @keyframes rotate-animation {
-            0% { transform: rotate(0deg); }
-            50% { transform: rotate(-90deg); }
-            100% { transform: rotate(-90deg); }
+        .text-red-600 { color: #dc2626; }
+        .text-black { color: #000; }
+        
+        /* Player slot styles */
+        .player-slot {
+            @apply flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-600 transition-all duration-300;
         }
-
-        @media (orientation: portrait) {
-            #app-container {
-                display: none;
-            }
-            #rotate-device-overlay {
-                display: flex;
-            }
+        .player-slot.active-turn {
+            @apply border-yellow-400 shadow-lg shadow-yellow-500/20;
+            transform: scale(1.05);
         }
-        @media (orientation: landscape) {
-            #app-container {
-                display: block; /* Ensure it shows in landscape */
-            }
-            #rotate-device-overlay {
-                display: none;
-            }
+        .player-slot.is-banker {
+            @apply border-green-400 bg-green-900/50;
         }
     </style>
 </head>
-<body>
+<body class="overflow-hidden">
 
+    <!-- Main App Container -->
     <div id="app-container">
-        <div id="welcome-page" class="page active">
-            <h1>លេងបៀរមិត្តយើង</h1>
-            <button id="play-btn" class="button">Play</button>
+        <!-- Welcome Page -->
+        <div id="welcome-page" class="page active flex flex-col justify-center items-center text-center p-4 bg-cover bg-center" style="background-image: url('https://placehold.co/1280x720/1a1a1a/333333?text=+)');">
+            <h1 class="font-koulen text-6xl md:text-8xl text-yellow-400 drop-shadow-lg">លេងបៀរមិត្តយើង</h1>
+            <p class="text-xl text-gray-300 mb-8">Welcome to Sikuthai Game</p>
+            <button id="play-button" class="btn-fancy font-koulen text-3xl">លេងឥឡូវនេះ</button>
         </div>
 
-        <div id="name-input-page" class="page">
-            <h2>Enter Your Name</h2>
-            <div class="input-group">
-                <input type="text" id="name-input" class="input-field" placeholder="e.g., Sokha" maxlength="15">
-                <button id="submit-name-btn" class="button">Continue</button>
-            </div>
-        </div>
-
-        <div id="pin-input-page" class="page">
-            <h2 id="pin-prompt-title">Create a 4-Digit PIN</h2>
-            <div class="input-group">
-                <input type="number" id="pin-input" class="input-field" placeholder="****" pattern="\d{4}" maxlength="4">
-                <button id="submit-pin-btn" class="button">Confirm</button>
-                <p id="pin-error" style="color: var(--error-color); margin-top: 10px; display: none;"></p>
-            </div>
-        </div>
-        
-        <div id="home-page" class="page">
-            <div class="header">
-                <div id="user-info" class="user-info"></div>
-                <button id="logout-btn" class="button secondary">Logout</button>
-            </div>
-            <h2>Game Rooms</h2>
-            <div id="room-list-container">
-                <p id="no-rooms-msg">No active rooms. Create one!</p>
-                <div id="room-list"></div>
-            </div>
-            <button id="create-room-btn" class="button">Create Room</button>
-        </div>
-
-        <div id="game-page" class="page">
-            <div class="header">
-                <h2 id="room-id-display">Room ID: ...</h2>
-                <button id="leave-room-btn" class="button secondary">Leave Room</button>
-            </div>
-            <div id="game-status">Waiting for players...</div>
-            <div id="player-area">
+        <!-- Auth Page (Name & PIN Setup) -->
+        <div id="auth-page" class="page flex justify-center items-center bg-gray-900/80 backdrop-blur-sm">
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                <!-- Name Input -->
+                <div id="name-step">
+                    <h2 class="text-2xl font-bold mb-4">Create Your Profile</h2>
+                    <p class="text-gray-400 mb-6">Please enter your display name.</p>
+                    <input type="text" id="name-input" placeholder="Your Name" class="w-full bg-gray-700 text-white p-3 rounded-lg text-center mb-4" maxlength="15">
+                    <button id="submit-name-button" class="btn-fancy w-full">Next</button>
                 </div>
-            <button id="start-game-btn" class="button" style="display: none;">Start Game</button>
-        </div>
-
-        <div id="play-again-notification" class="notification-overlay">
-            <div class="notification-box">
-                <h2 id="play-again-title">Round Over!</h2>
-                <p>Play again?</p>
-                <div id="countdown-timer">60s</div>
-                <button id="play-again-btn" class="button">Play Again</button>
+                <!-- PIN Setup -->
+                <div id="pin-setup-step" class="hidden">
+                    <h2 class="text-2xl font-bold mb-4">Set Your 4-Digit PIN</h2>
+                    <p class="text-gray-400 mb-6">This will be used to log in later.</p>
+                    <div id="pin-setup-container" class="flex justify-center gap-2 mb-4">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    </div>
+                    <button id="submit-pin-setup-button" class="btn-fancy w-full" disabled>Create PIN & Play</button>
+                </div>
+                 <!-- PIN Login -->
+                <div id="pin-login-step" class="hidden">
+                    <h2 class="text-2xl font-bold mb-4">Enter Your PIN</h2>
+                    <p id="pin-login-welcome" class="text-gray-400 mb-6">Welcome back!</p>
+                    <div id="pin-login-container" class="flex justify-center gap-2 mb-4">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    </div>
+                    <p id="pin-error" class="text-red-500 h-6"></p>
+                </div>
             </div>
         </div>
         
+        <!-- Home Page (Lobby) -->
+        <div id="home-page" class="page p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h1 class="text-3xl font-bold">Game Lobby</h1>
+                    <div id="user-info" class="text-yellow-400">Loading...</div>
+                </div>
+                <button id="create-room-button" class="btn-fancy">Create Room</button>
+            </div>
+            <div id="room-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Room items will be populated here -->
+            </div>
+        </div>
+
+        <!-- Game Page -->
+        <div id="game-page" class="page flex flex-col justify-between p-2 lg:p-4 bg-green-800 bg-opacity-50">
+            <!-- Top Bar -->
+            <div class="flex justify-between items-center px-4">
+                 <button id="leave-room-button" class="btn-secondary">Leave Room</button>
+                 <div id="game-status" class="text-center text-xl font-bold text-white bg-black/50 px-4 py-2 rounded-lg">Waiting for players...</div>
+                 <div class="text-lg font-semibold">Room ID: <span id="room-id-display"></span></div>
+            </div>
+
+            <!-- Game Table -->
+            <div class="relative flex-grow flex items-center justify-center">
+                <!-- Player slots (max 6 players) -->
+                <div id="player-slots-container" class="grid grid-cols-3 gap-4 w-full max-w-7xl mx-auto">
+                    <!-- Player slots will be dynamically added here -->
+                </div>
+            </div>
+            
+            <!-- Action Bar -->
+            <div id="action-bar" class="flex justify-center items-center gap-4 p-2 h-24">
+                 <!-- Actions will be populated here -->
+            </div>
+        </div>
+
+        <!-- Notification Overlay -->
+        <div id="notification-overlay" class="hidden fixed inset-0 bg-black/70 flex justify-center items-center z-50">
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl text-center max-w-sm">
+                <h3 id="notification-title" class="text-2xl font-bold mb-4">Notification</h3>
+                <p id="notification-message" class="text-gray-300 mb-6">Message goes here.</p>
+                <div id="notification-buttons">
+                    <!-- Buttons will be added dynamically -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="rotate-device-overlay">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
-            <path d="M0 0h24v24H0V0z" fill="none"/>
-            <path d="M15.55 5.55L11 1v3.07C7.06 4.56 4 7.92 4 12s3.06 7.44 7 7.93v-2.02c-2.84-.48-5-2.94-5-5.91s2.16-5.43 5-5.91V11l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.93v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03z"/>
-        </svg>
-        <p>Please rotate your device to landscape mode.</p>
+    <!-- Orientation Blocker -->
+    <div id="orientation-blocker" class="fixed inset-0 bg-gray-900 text-white flex-col justify-center items-center text-center p-4 z-50">
+        <svg class="w-16 h-16 mb-4 transform -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        <h2 class="text-2xl font-bold">Please Rotate Your Device</h2>
+        <p>This game is best played in landscape mode.</p>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue, set, get, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    <script>
-        // --- Your Firebase Configuration ---
+        // --- IMPORTANT ---
+        // REPLACE THIS WITH YOUR WEB APP'S FIREBASE CONFIGURATION
+        // You can find this in your Firebase project settings.
         const firebaseConfig = {
             apiKey: "AIzaSyCd7dKd-WeIyiC_i2PbgeWrshEXP5tDFbY",
             authDomain: "koyreachtopup.firebaseapp.com",
@@ -361,382 +260,737 @@
             appId: "1:878581988750:web:96b6a6910148986ba478df",
         };
 
-        // --- Initialize Firebase ---
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // --- Global State ---
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        // App State
         let currentUser = {
             id: null,
             name: null,
-            money: 0
+            money: 0,
+            currentRoomId: null,
         };
-        let currentRoomId = null;
-        let playAgainInterval;
-
-        // --- DOM Elements ---
-        const pages = document.querySelectorAll('.page');
-        const playBtn = document.getElementById('play-btn');
-        const submitNameBtn = document.getElementById('submit-name-btn');
-        const submitPinBtn = document.getElementById('submit-pin-btn');
-        const createRoomBtn = document.getElementById('create-room-btn');
-        const roomList = document.getElementById('room-list');
-        const noRoomsMsg = document.getElementById('no-rooms-msg');
-        const userInfoDisplay = document.getElementById('user-info');
+        let currentRoomListener = null;
+        let roomListListener = null;
+        let inactivityTimer = null;
+        let turnTimer = null;
+        
+        // DOM Elements
+        const pages = {
+            welcome: document.getElementById('welcome-page'),
+            auth: document.getElementById('auth-page'),
+            home: document.getElementById('home-page'),
+            game: document.getElementById('game-page'),
+        };
+        const playButton = document.getElementById('play-button');
         const nameInput = document.getElementById('name-input');
-        const pinInput = document.getElementById('pin-input');
-        const pinError = document.getElementById('pin-error');
-        const pinPromptTitle = document.getElementById('pin-prompt-title');
-        const playerArea = document.getElementById('player-area');
-        const startGameBtn = document.getElementById('start-game-btn');
-        const gameStatus = document.getElementById('game-status');
-        const leaveRoomBtn = document.getElementById('leave-room-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const playAgainNotification = document.getElementById('play-again-notification');
-        const playAgainBtn = document.getElementById('play-again-btn');
-        const countdownTimer = document.getElementById('countdown-timer');
+        const submitNameButton = document.getElementById('submit-name-button');
+        const nameStep = document.getElementById('name-step');
+        const pinSetupStep = document.getElementById('pin-setup-step');
+        const pinLoginStep = document.getElementById('pin-login-step');
+        const pinSetupContainer = document.getElementById('pin-setup-container');
+        const submitPinSetupButton = document.getElementById('submit-pin-setup-button');
+        const pinLoginContainer = document.getElementById('pin-login-container');
+        const createRoomButton = document.getElementById('create-room-button');
+        const leaveRoomButton = document.getElementById('leave-room-button');
 
-        // --- Navigation ---
-        function showPage(pageId) {
-            pages.forEach(page => {
-                page.classList.toggle('active', page.id === pageId);
-            });
+        // --- UTILITY FUNCTIONS ---
+        
+        function navigateTo(pageName) {
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            if (pages[pageName]) {
+                pages[pageName].classList.add('active');
+            }
         }
 
-        // --- User Management ---
-        function checkUser() {
-            const storedUserId = localStorage.getItem('sikuthai_userId');
-            const storedName = localStorage.getItem('sikuthai_userName');
+        function generateId(length = 6) {
+            return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+        }
 
-            if (storedUserId && storedName) {
-                currentUser.id = storedUserId;
-                currentUser.name = storedName;
-                pinPromptTitle.textContent = `Welcome back, ${storedName}! Enter PIN`;
-                showPage('pin-input-page');
+        function showNotification(title, message, buttons = [{ text: 'OK', action: hideNotification }]) {
+            document.getElementById('notification-title').innerText = title;
+            document.getElementById('notification-message').innerText = message;
+            const buttonContainer = document.getElementById('notification-buttons');
+            buttonContainer.innerHTML = '';
+            buttons.forEach(btnInfo => {
+                const button = document.createElement('button');
+                button.innerText = btnInfo.text;
+                button.className = (btnInfo.class || 'btn-fancy') + ' mx-2';
+                button.onclick = btnInfo.action;
+                buttonContainer.appendChild(button);
+            });
+            document.getElementById('notification-overlay').classList.remove('hidden');
+        }
+
+        function hideNotification() {
+            document.getElementById('notification-overlay').classList.add('hidden');
+        }
+
+        // --- AUTH & USER MANAGEMENT ---
+
+        async function initializeUser() {
+            let userId = localStorage.getItem('sikuthai_userId');
+            if (!userId) {
+                // New user flow
+                navigateTo('auth');
+                nameStep.classList.remove('hidden');
+                pinSetupStep.classList.add('hidden');
+                pinLoginStep.classList.add('hidden');
             } else {
-                showPage('welcome-page');
+                // Returning user flow
+                const userSnapshot = await get(ref(db, `users/${userId}`));
+                if (userSnapshot.exists()) {
+                    currentUser.id = userId;
+                    currentUser.name = userSnapshot.val().name;
+                    document.getElementById('pin-login-welcome').innerText = `Welcome back, ${currentUser.name}!`;
+                    navigateTo('auth');
+                    nameStep.classList.add('hidden');
+                    pinSetupStep.classList.add('hidden');
+                    pinLoginStep.classList.remove('hidden');
+                } else {
+                    // Data mismatch, treat as new user
+                    localStorage.removeItem('sikuthai_userId');
+                    initializeUser();
+                }
             }
         }
 
-        async function registerUser(name, pin) {
-            const userId = 'user_' + Date.now();
-            // IMPORTANT: Storing PINs in plaintext is highly insecure.
-            // In a real application, you MUST hash the PIN before storing it.
-            await db.ref('users/' + userId).set({
-                name: name,
-                pin: pin,
-                money: 0
+        function handlePinInput(container, onComplete) {
+            const inputs = container.querySelectorAll('input');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key >= 0 && e.key <= 9) {
+                        inputs[index].value = ''; // Clear before setting
+                        setTimeout(() => { if (index < inputs.length - 1) inputs[index + 1].focus(); }, 10);
+                    } else if (e.key === 'Backspace') {
+                         setTimeout(() => { if (index > 0) inputs[index - 1].focus(); }, 10);
+                    }
+                });
+                 input.addEventListener('input', () => {
+                    const pin = Array.from(inputs).map(i => i.value).join('');
+                    if (pin.length === 4) {
+                        onComplete(pin);
+                    }
+                 });
             });
-            localStorage.setItem('sikuthai_userId', userId);
-            localStorage.setItem('sikuthai_userName', name);
-            currentUser.id = userId;
-            currentUser.name = name;
-            currentUser.money = 0;
-            return true;
         }
-
-        async function loginUser(pin) {
-            const userRef = db.ref('users/' + currentUser.id);
-            const snapshot = await userRef.once('value');
-            const userData = snapshot.val();
-            if (userData && userData.pin === pin) {
-                currentUser.money = userData.money || 0;
-                return true;
+        
+        submitNameButton.addEventListener('click', () => {
+            if (nameInput.value.trim().length < 3) {
+                showNotification('Invalid Name', 'Your name must be at least 3 characters long.');
+                return;
             }
-            return false;
+            nameStep.classList.add('hidden');
+            pinSetupStep.classList.remove('hidden');
+            pinSetupContainer.querySelectorAll('input')[0].focus();
+        });
+
+        handlePinInput(pinSetupContainer, (pin) => {
+            submitPinSetupButton.disabled = false;
+            submitPinSetupButton.onclick = async () => {
+                const newUserId = generateId(10);
+                const newUser = {
+                    name: nameInput.value.trim(),
+                    pin: pin,
+                    money: 5000, // Starting money
+                };
+                await set(ref(db, `users/${newUserId}`), newUser);
+                localStorage.setItem('sikuthai_userId', newUserId);
+                currentUser = { id: newUserId, ...newUser };
+                loginSuccess();
+            };
+        });
+
+        handlePinInput(pinLoginContainer, async (pin) => {
+            const userRef = ref(db, `users/${currentUser.id}`);
+            const userSnapshot = await get(userRef);
+            if (userSnapshot.exists() && userSnapshot.val().pin === pin) {
+                currentUser = { id: currentUser.id, ...userSnapshot.val() };
+                loginSuccess();
+            } else {
+                document.getElementById('pin-error').innerText = 'Incorrect PIN. Try again.';
+                pinLoginContainer.querySelectorAll('input').forEach(i => i.value = '');
+                pinLoginContainer.querySelectorAll('input')[0].focus();
+                setTimeout(() => document.getElementById('pin-error').innerText = '', 2000);
+            }
+        });
+
+        function loginSuccess() {
+            // Set up presence system
+            const userStatusRef = ref(db, `users/${currentUser.id}/online`);
+            const userCurrentRoomRef = ref(db, `users/${currentUser.id}/currentRoomId`);
+            onValue(ref(db, '.info/connected'), (snap) => {
+                if (snap.val() === true) {
+                    set(userStatusRef, true);
+                    onDisconnect(userStatusRef).set(false);
+                    onDisconnect(userCurrentRoomRef).set(null);
+                }
+            });
+
+            navigateTo('home');
+            startHomePageListeners();
         }
 
-        function logout() {
-            localStorage.removeItem('sikuthai_userId');
-            localStorage.removeItem('sikuthai_userName');
-            currentUser = { id: null, name: null, money: 0 };
-            currentRoomId = null; // Reset room state
-            showPage('welcome-page');
-        }
+        // --- HOME PAGE (LOBBY) ---
 
-        // --- Room Management ---
-        function listenForRooms() {
-            db.ref('rooms').on('value', (snapshot) => {
+        function startHomePageListeners() {
+            const userInfoDiv = document.getElementById('user-info');
+            onValue(ref(db, `users/${currentUser.id}`), (snap) => {
+                if (snap.exists()) {
+                    const userData = snap.val();
+                    currentUser.money = userData.money;
+                    userInfoDiv.innerHTML = `<span class="font-semibold">${currentUser.name}</span> | <span class="text-green-400 font-bold">${currentUser.money} R</span>`;
+                }
+            });
+
+            const roomsRef = ref(db, 'rooms');
+            if (roomListListener) roomListListener(); // Detach old listener
+            roomListListener = onValue(roomsRef, (snapshot) => {
+                const roomListDiv = document.getElementById('room-list');
+                roomListDiv.innerHTML = '';
                 const rooms = snapshot.val();
-                roomList.innerHTML = '';
                 if (rooms) {
-                    noRoomsMsg.style.display = 'none';
                     Object.entries(rooms).forEach(([roomId, roomData]) => {
-                        const playerCount = roomData.players ? Object.keys(roomData.players).length : 0;
-                        if (playerCount < 6 && roomData.status === 'waiting') {
-                            const roomItem = document.createElement('div');
-                            roomItem.className = 'room-item';
-                            roomItem.innerHTML = `
-                                <span>Room by ${roomData.hostName || 'Host'} (${playerCount}/6)</span>
-                                <button class="button">Join</button>
+                        const playerCount = Object.keys(roomData.players || {}).length;
+                        if (playerCount > 0 && playerCount < 6) {
+                            const roomCard = document.createElement('div');
+                            roomCard.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-lg';
+                            roomCard.innerHTML = `
+                                <div>
+                                    <h3 class="text-xl font-bold">Room ${roomId}</h3>
+                                    <p class="text-gray-400">Host: ${roomData.players[roomData.hostId]?.name || 'Unknown'}</p>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-2xl font-bold">${playerCount}/6</span>
+                                    <p class="text-sm">${roomData.status}</p>
+                                </div>
+                                <button class="btn-secondary join-room-btn" data-room-id="${roomId}">Join</button>
                             `;
-                            roomItem.querySelector('button').onclick = () => joinRoom(roomId);
-                            roomList.appendChild(roomItem);
+                            roomListDiv.appendChild(roomCard);
                         }
                     });
-                } else {
-                    noRoomsMsg.style.display = 'block';
                 }
+                 // Add click listeners to join buttons
+                document.querySelectorAll('.join-room-btn').forEach(button => {
+                    button.addEventListener('click', () => joinRoom(button.dataset.roomId));
+                });
             });
         }
-
-        async function createRoom() {
-            if (!currentUser.id) return;
-            const newRoomRef = db.ref('rooms').push();
-            currentRoomId = newRoomRef.key;
-            await newRoomRef.set({
+        
+        createRoomButton.addEventListener('click', async () => {
+            const newRoomId = generateId();
+            const newRoom = {
                 hostId: currentUser.id,
-                hostName: currentUser.name,
-                status: 'waiting',
-                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                status: 'waiting', // waiting, playing, finished
                 players: {
-                    [currentUser.id]: { name: currentUser.name, money: currentUser.money }
-                }
-            });
-            navigateToGamePage();
-        }
+                    [currentUser.id]: {
+                        name: currentUser.name,
+                        money: currentUser.money,
+                        status: 'waiting', // waiting, ready, playing
+                    }
+                },
+                createdAt: Date.now()
+            };
+            await set(ref(db, `rooms/${newRoomId}`), newRoom);
+            joinRoom(newRoomId);
+        });
 
         async function joinRoom(roomId) {
-            if (!currentUser.id) return;
-            const roomRef = db.ref(`rooms/${roomId}`);
-            const snapshot = await roomRef.once('value');
-            const roomData = snapshot.val();
-            const playerCount = roomData.players ? Object.keys(roomData.players).length : 0;
-
-            if (playerCount < 6) {
-                currentRoomId = roomId;
-                await db.ref(`rooms/${roomId}/players/${currentUser.id}`).set({
-                    name: currentUser.name,
-                    money: currentUser.money
-                });
-                navigateToGamePage();
-            } else {
-                alert('Room is full!');
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+            if (!roomSnapshot.exists()) {
+                showNotification('Error', 'Room does not exist.');
+                return;
             }
-        }
-        
-        async function leaveRoom() {
-            if (!currentUser.id || !currentRoomId) return;
 
-            const roomRef = db.ref(`rooms/${currentRoomId}`);
-            // Remove the current player
-            await db.ref(`rooms/${currentRoomId}/players/${currentUser.id}`).remove();
-            
-            const snapshot = await roomRef.once('value');
-            const roomData = snapshot.val();
+            const roomData = roomSnapshot.val();
+            const playerCount = Object.keys(roomData.players || {}).length;
 
-            // If the room is now empty or the host left, delete the room
-            if (!roomData || !roomData.players || roomData.hostId === currentUser.id) {
-                await roomRef.remove();
+            if (playerCount >= 6 && !roomData.players[currentUser.id]) {
+                showNotification('Room Full', 'This room has reached the maximum of 6 players.');
+                return;
             }
+
+            if (currentUser.money < 500) {
+                 showNotification('Insufficient Funds', 'You need at least 500 R to play a round.');
+                 return;
+            }
+
+            currentUser.currentRoomId = roomId;
+            await update(ref(db, `users/${currentUser.id}`), { currentRoomId: roomId });
+            await set(ref(db, `rooms/${roomId}/players/${currentUser.id}`), {
+                name: currentUser.name,
+                money: currentUser.money,
+                status: 'waiting',
+            });
             
-            db.ref(`rooms/${currentRoomId}`).off(); // Stop listening
-            currentRoomId = null;
-            showPage('home-page');
+            // Set up onDisconnect for room cleanup
+            onDisconnect(ref(db, `rooms/${roomId}/players/${currentUser.id}`)).remove();
+
+            if (roomListListener) roomListListener(); // Stop listening to room list
+            navigateTo('game');
+            startGamePageListeners(roomId);
         }
+
+        // --- GAME PAGE ---
         
-        // --- Game Logic ---
-        function navigateToGamePage() {
-            if (!currentRoomId) return;
-            showPage('game-page');
-            document.getElementById('room-id-display').textContent = `Room: ${currentRoomId.slice(-6)}`;
+        function startGamePageListeners(roomId) {
+            document.getElementById('room-id-display').innerText = roomId;
+            const roomRef = ref(db, `rooms/${roomId}`);
+
+            if (currentRoomListener) currentRoomListener(); // Detach old listener if any
             
-            // Listen for changes in the current room
-            db.ref(`rooms/${currentRoomId}`).on('value', (snapshot) => {
+            currentRoomListener = onValue(roomRef, (snapshot) => {
                 if (!snapshot.exists()) {
-                    alert('The room was closed.');
-                    leaveRoom(); // Clean up and go home
+                    // Room was deleted, probably by host leaving
+                    leaveRoomCleanup();
+                    showNotification('Room Closed', 'The host has left the room.', [{text: 'OK', action: () => { hideNotification(); navigateTo('home'); startHomePageListeners(); }}]);
                     return;
                 }
                 const roomData = snapshot.val();
-                updateGameUI(roomData);
+                renderGame(roomData, roomId);
+                resetInactivityTimer(roomId);
             });
         }
-        
-        function updateGameUI(roomData) {
+
+        function renderGame(roomData, roomId) {
             const players = roomData.players || {};
             const playerCount = Object.keys(players).length;
-            
-            playerArea.innerHTML = '';
-            Object.entries(players).forEach(([playerId, playerData]) => {
-                const card = document.createElement('div');
-                card.className = 'player-card';
-                card.id = `player-${playerId}`;
-                card.innerHTML = `
-                    <p>${playerData.name}</p>
-                    <small>${playerData.money} R</small>
-                `;
-                if(roomData.currentBanker === playerId) card.classList.add('is-banker');
-                if(roomData.currentTurn === playerId) card.classList.add('is-turn');
-                playerArea.appendChild(card);
-            });
-            
-            if (roomData.status === 'waiting') {
-                gameStatus.textContent = `Waiting for players... (${playerCount}/6)`;
-                startGameBtn.style.display = (playerCount >= 2 && roomData.hostId === currentUser.id) ? 'block' : 'none';
-            } else if (roomData.status === 'in-progress') {
-                gameStatus.textContent = 'Game in progress...';
-                startGameBtn.style.display = 'none';
-                // You would add turn logic here
-            } else if (roomData.status === 'finished') {
-                startGameBtn.style.display = 'none';
-                gameStatus.textContent = 'Round finished!';
-                showPlayAgainNotification();
-            }
-        }
-        
-        async function startGame() {
-            if (!currentRoomId || !currentUser.id) return;
-            
-            const roomRef = db.ref(`rooms/${currentRoomId}`);
-            const snapshot = await roomRef.once('value');
-            const roomData = snapshot.val();
-            const playerIds = Object.keys(roomData.players);
-            
-            if (playerIds.length < 2) return;
-            
-            // Deduct money for the round
-            const updates = {};
-            playerIds.forEach(id => {
-                const currentMoney = roomData.players[id].money || 0;
-                updates[`/users/${id}/money`] = currentMoney - 500;
-                updates[`/rooms/${currentRoomId}/players/${id}/money`] = currentMoney - 500;
-            });
-            
-            // Randomly assign a banker
-            const randomBanker = playerIds[Math.floor(Math.random() * playerIds.length)];
-            
-            updates[`/rooms/${currentRoomId}/status`] = 'in-progress';
-            updates[`/rooms/${currentRoomId}/currentBanker`] = randomBanker;
-            updates[`/rooms/${currentRoomId}/currentTurn`] = randomBanker; // Banker starts
-            
-            await db.ref().update(updates);
-            
-            // Placeholder to end the game after 15s for demonstration
-            setTimeout(endRound, 15000);
-        }
-        
-        function endRound() {
-            if (!currentRoomId) return;
-            db.ref(`rooms/${currentRoomId}/status`).set('finished');
-        }
+            const slotsContainer = document.getElementById('player-slots-container');
+            slotsContainer.innerHTML = '';
 
-        function showPlayAgainNotification() {
-            playAgainNotification.classList.add('active');
-            let timeLeft = 60;
-            
-            // Reset button state
-            playAgainBtn.disabled = false;
-            playAgainBtn.textContent = 'Play Again';
-            db.ref(`rooms/${currentRoomId}/players/${currentUser.id}/wantsToPlayAgain`).set(false);
+            // Render player slots
+            for (let i = 0; i < 6; i++) {
+                const slot = document.createElement('div');
+                const playerId = Object.keys(players)[i];
+                if (playerId) {
+                    const player = players[playerId];
+                    slot.className = `player-slot bg-gray-900/50`;
+                    if (playerId === roomData.turn) slot.classList.add('active-turn');
+                    if (playerId === roomData.bankerId) slot.classList.add('is-banker');
 
-            countdownTimer.textContent = `${timeLeft}s`;
-            playAgainInterval = setInterval(async () => {
-                timeLeft--;
-                countdownTimer.textContent = `${timeLeft}s`;
-                if (timeLeft <= 0) {
-                    clearInterval(playAgainInterval);
-                    playAgainNotification.classList.remove('active');
-                    alert('Time is up! Returning to lobby.');
-                    await leaveRoom();
-                }
-            }, 1000);
-        }
+                    const cardsHtml = (player.cards || []).map(card => renderCard(card, player.id === currentUser.id || roomData.status === 'finished')).join('');
 
-        async function handlePlayAgain() {
-            playAgainBtn.disabled = true;
-            playAgainBtn.textContent = 'Waiting for others...';
-            
-            // Mark this player as ready
-            await db.ref(`rooms/${currentRoomId}/players/${currentUser.id}/wantsToPlayAgain`).set(true);
-            
-            // Check if all players are ready
-            const roomRef = db.ref(`rooms/${currentRoomId}`);
-            roomRef.once('value', (snapshot) => {
-                const roomData = snapshot.val();
-                if (!roomData || !roomData.players) return;
-                
-                const players = Object.values(roomData.players);
-                const allReady = players.every(p => p.wantsToPlayAgain === true);
-
-                if (allReady) {
-                    clearInterval(playAgainInterval);
-                    playAgainNotification.classList.remove('active');
-                    
-                    // Reset ready status for next round
-                    const updates = {};
-                    Object.keys(roomData.players).forEach(playerId => {
-                        updates[`/rooms/${currentRoomId}/players/${playerId}/wantsToPlayAgain`] = false;
-                    });
-                    db.ref().update(updates);
-
-                    // Start a new game if current user is the host
-                    if(roomData.hostId === currentUser.id) {
-                       startGame();
-                    }
-                }
-            });
-        }
-        
-        // --- Event Listeners ---
-        playBtn.addEventListener('click', () => {
-            const storedUserId = localStorage.getItem('sikuthai_userId');
-            if (storedUserId) {
-                showPage('pin-input-page');
-            } else {
-                showPage('name-input-page');
-            }
-        });
-
-        submitNameBtn.addEventListener('click', () => {
-            if (nameInput.value.trim()) {
-                showPage('pin-input-page');
-            }
-        });
-
-        submitPinBtn.addEventListener('click', async () => {
-            const pin = pinInput.value;
-            if (pin.length !== 4) {
-                pinError.textContent = 'PIN must be 4 digits.';
-                pinError.style.display = 'block';
-                return;
-            }
-            pinError.style.display = 'none';
-
-            if (currentUser.id) { // Login flow
-                const success = await loginUser(pin);
-                if (success) {
-                    showPage('home-page');
-                    userInfoDisplay.textContent = `${currentUser.name} - ${currentUser.money} R`;
-                    listenForRooms();
+                    slot.innerHTML = `
+                        <div class="text-center">
+                            <div class="font-bold text-lg">${player.name} ${playerId === roomData.bankerId ? '👑' : ''}</div>
+                            <div class="text-sm ${player.status === 'busted' ? 'text-red-500' : 'text-yellow-400'}">${player.score || 0}</div>
+                        </div>
+                        <div class="flex justify-center gap-1 my-2 h-28 items-center">${cardsHtml}</div>
+                        <div class="text-xs text-gray-400">${player.status}</div>
+                    `;
                 } else {
-                    pinError.textContent = 'Incorrect PIN.';
-                    pinError.style.display = 'block';
+                    slot.className = 'player-slot border-dashed';
+                    slot.innerHTML = `<span class="text-gray-500">Empty Slot</span>`;
                 }
-            } else { // Registration flow
-                await registerUser(nameInput.value.trim(), pin);
-                showPage('home-page');
-                userInfoDisplay.textContent = `${currentUser.name} - ${currentUser.money} R`;
-                listenForRooms();
+                slotsContainer.appendChild(slot);
             }
-        });
-        
-        pinInput.addEventListener('input', () => {
-             if (pinInput.value.length > 4) {
-                pinInput.value = pinInput.value.slice(0, 4);
-            }
-        });
-        
-        createRoomBtn.addEventListener('click', createRoom);
-        startGameBtn.addEventListener('click', startGame);
-        leaveRoomBtn.addEventListener('click', leaveRoom);
-        logoutBtn.addEventListener('click', logout);
-        playAgainBtn.addEventListener('click', handlePlayAgain);
-        window.addEventListener('beforeunload', leaveRoom); // Attempt to leave room on tab close
 
-        // --- Initial Load ---
-        checkUser();
+            // Update Game Status
+            const gameStatusDiv = document.getElementById('game-status');
+            gameStatusDiv.textContent = roomData.message || roomData.status;
+
+            // Render Action Bar
+            const actionBar = document.getElementById('action-bar');
+            actionBar.innerHTML = '';
+
+            if (roomData.status === 'waiting') {
+                if (playerCount >= 2 && roomData.hostId === currentUser.id) {
+                    const startButton = document.createElement('button');
+                    startButton.className = 'btn-fancy';
+                    startButton.innerText = 'Start Game';
+                    startButton.onclick = () => startGame(roomId);
+                    actionBar.appendChild(startButton);
+                }
+            } else if (roomData.status === 'playing' && roomData.turn === currentUser.id) {
+                const hitButton = document.createElement('button');
+                hitButton.className = 'btn-secondary';
+                hitButton.innerText = 'Hit (Draw)';
+                hitButton.onclick = () => playerAction(roomId, 'hit');
+                
+                const stayButton = document.createElement('button');
+                stayButton.className = 'btn-secondary';
+                stayButton.innerText = 'Stay';
+                stayButton.onclick = () => playerAction(roomId, 'stay');
+
+                actionBar.appendChild(hitButton);
+                actionBar.appendChild(stayButton);
+
+                // Start turn timer
+                clearTimeout(turnTimer);
+                turnTimer = setTimeout(() => playerAction(roomId, 'stay'), 10000); // Auto-stay after 10s
+                
+            } else if (roomData.status === 'finished') {
+                const playAgainButton = document.createElement('button');
+                playAgainButton.className = 'btn-fancy';
+                const hasVoted = roomData.playAgainVotes && roomData.playAgainVotes[currentUser.id];
+                playAgainButton.innerText = hasVoted ? 'Waiting for others...' : 'Play Again';
+                playAgainButton.disabled = hasVoted;
+                playAgainButton.onclick = () => votePlayAgain(roomId);
+                actionBar.appendChild(playAgainButton);
+            }
+        }
         
+        function renderCard(card, isFlipped) {
+            const suitSymbols = { 'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠' };
+            const suitColor = (card.suit === 'H' || card.suit === 'D') ? 'text-red-600' : 'text-black';
+            return `
+                <div class="card ${isFlipped ? 'flipped' : ''}">
+                    <div class="card-inner">
+                        <div class="card-face card-back"></div>
+                        <div class="card-face card-front">
+                            <div class="self-start ${suitColor}"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
+                            <div class="${suitColor}"><span class="text-3xl">${suitSymbols[card.suit]}</span></div>
+                            <div class="self-end ${suitColor} transform rotate-180"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function leaveRoom() {
+            if (!currentUser.currentRoomId) return;
+            
+            const roomId = currentUser.currentRoomId;
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+
+            // Clean up timers and listeners
+            leaveRoomCleanup();
+
+            if (roomSnapshot.exists()) {
+                const roomData = roomSnapshot.val();
+                const players = roomData.players || {};
+                
+                // Remove player from room
+                await remove(ref(db, `rooms/${roomId}/players/${currentUser.id}`));
+
+                const remainingPlayers = Object.keys(players).filter(id => id !== currentUser.id);
+
+                if (remainingPlayers.length === 0) {
+                    // If last player leaves, delete the room
+                    await remove(roomRef);
+                } else if (roomData.hostId === currentUser.id) {
+                    // If host leaves, assign a new host
+                    await update(roomRef, { hostId: remainingPlayers[0] });
+                }
+            }
+            navigateTo('home');
+            startHomePageListeners();
+        }
+        
+        leaveRoomButton.addEventListener('click', () => {
+             showNotification('Leave Room', 'Are you sure you want to leave the game?', [
+                { text: 'Yes, Leave', action: leaveRoom, class: 'btn-secondary' },
+                { text: 'Cancel', action: hideNotification }
+            ]);
+        });
+        
+        function leaveRoomCleanup() {
+             if (currentRoomListener) {
+                currentRoomListener(); // Detach Firebase listener
+                currentRoomListener = null;
+             }
+             clearTimeout(inactivityTimer);
+             clearTimeout(turnTimer);
+             update(ref(db, `users/${currentUser.id}`), { currentRoomId: null });
+             currentUser.currentRoomId = null;
+        }
+
+        // --- GAME LOGIC ---
+
+        function createDeck() {
+            const suits = ['H', 'D', 'C', 'S'];
+            const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            let deck = [];
+            for (const suit of suits) {
+                for (const rank of ranks) {
+                    deck.push({ rank, suit });
+                }
+            }
+            return deck;
+        }
+
+        function shuffleDeck(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+        
+        function calculateScore(cards) {
+             let score = 0;
+             let aceCount = 0;
+             for (const card of cards) {
+                 if (['J', 'Q', 'K'].includes(card.rank)) {
+                     score += 10;
+                 } else if (card.rank === 'A') {
+                     aceCount += 1;
+                     score += 11;
+                 } else {
+                     score += parseInt(card.rank);
+                 }
+             }
+             while (score > 21 && aceCount > 0) {
+                 score -= 10;
+                 aceCount -= 1;
+             }
+             return score;
+        }
+
+        async function startGame(roomId) {
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+            if (!roomSnapshot.exists()) return;
+
+            const roomData = roomSnapshot.val();
+            const playerIds = Object.keys(roomData.players);
+
+            // Deduct money
+            const updates = {};
+            let canStart = true;
+            for (const playerId of playerIds) {
+                const playerRef = ref(db, `users/${playerId}`);
+                const playerSnap = await get(playerRef);
+                if (playerSnap.val().money < 500) {
+                    canStart = false;
+                    const brokePlayerName = roomData.players[playerId].name;
+                    showNotification('Game Cannot Start', `${brokePlayerName} does not have enough money (500 R) to play.`);
+                    break;
+                }
+                updates[`users/${playerId}/money`] = playerSnap.val().money - 500;
+            }
+            if(!canStart) return;
+            await update(ref(db), updates);
+
+            // Game setup
+            const deck = shuffleDeck(createDeck());
+            const newBankerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+            
+            const updatedPlayers = {};
+            playerIds.forEach(id => {
+                const playerCards = [deck.pop(), deck.pop()];
+                updatedPlayers[id] = {
+                    ...roomData.players[id],
+                    cards: playerCards,
+                    score: calculateScore(playerCards),
+                    status: 'playing'
+                };
+            });
+            
+            // Determine first turn (player after banker)
+            const bankerIndex = playerIds.indexOf(newBankerId);
+            const firstTurnIndex = (bankerIndex + 1) % playerIds.length;
+            const firstTurnPlayerId = playerIds[firstTurnIndex];
+
+            await update(roomRef, {
+                status: 'playing',
+                deck: deck,
+                bankerId: newBankerId,
+                players: updatedPlayers,
+                turn: firstTurnPlayerId,
+                message: `${updatedPlayers[firstTurnPlayerId].name}'s turn`,
+                pot: playerIds.length * 500,
+                playAgainVotes: null, // Clear votes
+            });
+        }
+        
+        async function playerAction(roomId, action) {
+            clearTimeout(turnTimer);
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+            if (!roomSnapshot.exists()) return;
+            let roomData = roomSnapshot.val();
+            
+            if (roomData.turn !== currentUser.id) return; // Not my turn
+
+            const updates = {};
+            const currentPlayer = roomData.players[currentUser.id];
+            
+            if (action === 'hit') {
+                const newCard = roomData.deck.pop();
+                currentPlayer.cards.push(newCard);
+                currentPlayer.score = calculateScore(currentPlayer.cards);
+                if (currentPlayer.score > 21) {
+                    currentPlayer.status = 'busted';
+                    action = 'stay'; // Force stay if busted
+                }
+                updates[`rooms/${roomId}/players/${currentUser.id}`] = currentPlayer;
+                updates[`rooms/${roomId}/deck`] = roomData.deck;
+            }
+
+            if (action === 'stay') {
+                 currentPlayer.status = 'stayed';
+                 updates[`rooms/${roomId}/players/${currentUser.id}`] = currentPlayer;
+            }
+
+            // Find next player
+            const playerIds = Object.keys(roomData.players);
+            const currentIndex = playerIds.indexOf(currentUser.id);
+            let nextPlayerId = null;
+            for (let i = 1; i <= playerIds.length; i++) {
+                const nextIndex = (currentIndex + i) % playerIds.length;
+                const potentialNextPlayerId = playerIds[nextIndex];
+                // Skip banker, find next playing player
+                if (potentialNextPlayerId !== roomData.bankerId && roomData.players[potentialNextPlayerId].status === 'playing') {
+                    nextPlayerId = potentialNextPlayerId;
+                    break;
+                }
+            }
+
+            if (nextPlayerId) {
+                updates[`rooms/${roomId}/turn`] = nextPlayerId;
+                updates[`rooms/${roomId}/message`] = `${roomData.players[nextPlayerId].name}'s turn`;
+            } else {
+                // All players have played, banker's turn
+                updates[`rooms/${roomId}/turn`] = roomData.bankerId;
+                updates[`rooms/${roomId}/message`] = `Banker's turn`;
+            }
+            
+            await update(ref(db), updates);
+
+            // If it's now the banker's turn, run banker logic after a short delay
+            if (!nextPlayerId) {
+                setTimeout(() => runBankerTurn(roomId), 1500);
+            }
+        }
+        
+        async function runBankerTurn(roomId) {
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+            if (!roomSnapshot.exists()) return;
+            let roomData = roomSnapshot.val();
+
+            let banker = roomData.players[roomData.bankerId];
+            
+            // Banker hits until score is 17 or higher
+            while (banker.score < 17) {
+                const newCard = roomData.deck.pop();
+                banker.cards.push(newCard);
+                banker.score = calculateScore(banker.cards);
+            }
+            
+            if (banker.score > 21) {
+                banker.status = 'busted';
+            } else {
+                banker.status = 'stayed';
+            }
+            
+            await update(ref(db, `rooms/${roomId}/players/${roomData.bankerId}`), banker);
+            await update(ref(db, `rooms/${roomId}/deck`), roomData.deck);
+            
+            // End the game after banker's turn
+            setTimeout(() => endGame(roomId), 1500);
+        }
+
+        async function endGame(roomId) {
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const roomSnapshot = await get(roomRef);
+            if (!roomSnapshot.exists()) return;
+            let roomData = roomSnapshot.val();
+
+            const banker = roomData.players[roomData.bankerId];
+            const bankerScore = banker.status === 'busted' ? 0 : banker.score;
+            const playerIds = Object.keys(roomData.players);
+            const pot = roomData.pot || 0;
+            let moneyToBanker = 0;
+            let winners = [];
+
+            const moneyUpdates = {};
+
+            for (const playerId of playerIds) {
+                if (playerId === roomData.bankerId) continue;
+                const player = roomData.players[playerId];
+                const playerScore = player.status === 'busted' ? 0 : player.score;
+                
+                if (playerScore > bankerScore) {
+                    // Player wins
+                    winners.push(player.name);
+                    // In this simple version, banker pays player. We'll simulate by just not taking their money.
+                    // For a real game, banker would pay double. Here we just say they win.
+                    // For simplicity, winner just gets their bet back from the pot.
+                } else if (playerScore < bankerScore) {
+                    // Banker wins
+                    moneyToBanker += 500;
+                } else {
+                    // Push (tie)
+                    // Player gets their money back
+                }
+            }
+
+            // Distribute pot - complex logic simplified for now
+            // In this version, if there's one winner, they take the pot. If multiple, they split it.
+            // If banker wins all, banker takes the pot.
+            if(winners.length > 0){
+                const winningsPerWinner = Math.floor(pot / winners.length);
+                const winnerIds = playerIds.filter(id => winners.includes(roomData.players[id].name));
+                for(const winnerId of winnerIds) {
+                    const userRef = ref(db, `users/${winnerId}`);
+                    const userSnap = await get(userRef);
+                    moneyUpdates[winnerId] = (userSnap.val().money || 0) + winningsPerWinner;
+                }
+            } else { // Banker wins
+                const bankerRef = ref(db, `users/${roomData.bankerId}`);
+                const bankerSnap = await get(bankerRef);
+                moneyUpdates[roomData.bankerId] = (bankerSnap.val().money || 0) + pot;
+            }
+
+            // Apply money updates
+            for (const [userId, newMoney] of Object.entries(moneyUpdates)) {
+                await update(ref(db, `users/${userId}`), { money: newMoney });
+            }
+
+            let message = `Banker score: ${bankerScore}. `;
+            if(winners.length > 0) {
+                message += `Winners: ${winners.join(', ')}!`;
+            } else {
+                message += 'Banker wins the round!';
+            }
+
+            await update(roomRef, {
+                status: 'finished',
+                turn: null,
+                message: message
+            });
+        }
+        
+        async function votePlayAgain(roomId) {
+            await set(ref(db, `rooms/${roomId}/playAgainVotes/${currentUser.id}`), true);
+            const roomSnapshot = await get(ref(db, `rooms/${roomId}`));
+            const roomData = roomSnapshot.val();
+            const votes = Object.keys(roomData.playAgainVotes || {}).length;
+            const players = Object.keys(roomData.players || {}).length;
+            if (votes === players) {
+                startGame(roomId);
+            }
+        }
+        
+        // --- TIMERS ---
+        function resetInactivityTimer(roomId) {
+             clearTimeout(inactivityTimer);
+             inactivityTimer = setTimeout(() => {
+                 showNotification('Inactivity Kick', 'You have been removed from the room due to inactivity.', [
+                     { text: 'OK', action: () => { hideNotification(); leaveRoom(); } }
+                 ]);
+             }, 60000); // 60 seconds
+        }
+
+        // --- INITIALIZATION ---
+        playButton.addEventListener('click', initializeUser);
+        window.addEventListener('load', () => {
+             // Check if user was in a room
+             const lastUserId = localStorage.getItem('sikuthai_userId');
+             if(lastUserId) {
+                 get(ref(db, `users/${lastUserId}/currentRoomId`)).then(snap => {
+                     if(snap.exists() && snap.val() !== null) {
+                         // User was in a room, force them back to login to rejoin
+                         initializeUser();
+                     }
+                 })
+             }
+        });
     </script>
 </body>
 </html>
