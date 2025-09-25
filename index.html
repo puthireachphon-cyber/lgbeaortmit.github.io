@@ -1,821 +1,362 @@
 <!DOCTYPE html>
-<html lang="km">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sikuthai - លេងបៀរមិត្តយើង</title>
-    
-    <!-- App-like experience when added to home screen -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://placehold.co/180x180/1a1a1a/ffffff?text=SKT">
-    <link rel="icon" href="https://placehold.co/192x192/1a1a1a/ffffff?text=SKT">
-
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Watch Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Base styles */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-            overscroll-behavior: none;
-            touch-action: manipulation;
         }
-
-        /* Custom Khmer font for specific elements */
-        .font-koulen {
-            font-family: 'Koulen', cursive;
+        /* Style for the YouTube player aspect ratio */
+        .player-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
         }
-        
-        /* Force landscape orientation on mobile */
-        @media (orientation: portrait) and (max-width: 768px) {
-            #app-container { display: none; }
-            #orientation-blocker { display: flex; }
-        }
-        @media (orientation: landscape), (min-width: 769px) {
-            #app-container { display: block; }
-            #orientation-blocker { display: none; }
-        }
-
-        /* Page transition styles */
-        .page {
-            position: fixed;
+        .player-container iframe {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
-            opacity: 0;
-            transform: scale(1.05);
-            pointer-events: none;
-            overflow-y: auto;
-        }
-        .page.active {
-            opacity: 1;
-            transform: scale(1);
-            pointer-events: auto;
-        }
-
-        /* PIN input styles */
-        .pin-input {
-            width: 3rem; height: 4rem; text-align: center; font-size: 2rem;
-        }
-
-        /* Custom button styles */
-        .btn-fancy {
-            @apply px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-full shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95;
-        }
-        .btn-secondary {
-            @apply px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg shadow-md transform transition-transform duration-200 hover:bg-gray-600 hover:scale-105 active:scale-95;
-        }
-
-        /* Playing card styles */
-        .card {
-            width: 80px;
-            height: 112px;
-            perspective: 1000px;
-            position: relative;
-            transition: all 0.3s ease-in-out;
-        }
-        .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-        }
-        .card-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            @apply rounded-lg border-2 border-gray-400 shadow-md;
-        }
-        .card-front {
-            background: white;
-            color: black;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px;
-        }
-        .card-back {
-            background: linear-gradient(135deg, #4a148c, #880e4f);
-            transform: rotateY(180deg);
-            @apply border-purple-300;
-        }
-        .card-rank { font-size: 1.5rem; font-weight: bold; }
-        .card-suit { font-size: 1.5rem; }
-        .text-red-600 { color: #dc2626; }
-        .text-black { color: #000; }
-        
-        /* Player hand styles */
-        .player-hand .card {
-            margin-right: -55px; /* Overlap cards */
-        }
-        .player-hand.is-current-user .card:hover {
-            transform: translateY(-20px) scale(1.08);
-            z-index: 100;
-            cursor: pointer;
-        }
-
-        /* Player slot styles */
-        .player-slot {
-            @apply flex flex-col items-center justify-between p-2 rounded-lg border-2 border-gray-600 transition-all duration-300 min-h-[180px];
-        }
-        .player-slot.active-turn {
-            @apply border-yellow-400 shadow-lg shadow-yellow-500/20 bg-gray-900/50;
-            transform: scale(1.05);
-        }
-        
-        /* Game Table Piles */
-        .game-pile {
-             @apply w-[90px] h-[122px] rounded-lg flex items-center justify-center text-center font-bold text-lg;
         }
     </style>
 </head>
-<body class="overflow-hidden">
+<body class="bg-gray-900 text-white antialiased">
 
-    <!-- Main App Container -->
-    <div id="app-container">
-        <!-- Welcome Page -->
-        <div id="welcome-page" class="page active flex flex-col justify-center items-center text-center p-4 bg-cover bg-center" style="background-image: url('https://placehold.co/1280x720/1a1a1a/333333?text=+)');">
-            <h1 class="font-koulen text-6xl md:text-8xl text-yellow-400 drop-shadow-lg">លេងបៀរមិត្តយើង</h1>
-            <p class="text-xl text-gray-300 mb-8">Welcome to Sikuthai Game</p>
-            <button id="play-button" class="btn-fancy font-koulen text-3xl">លេងឥឡូវនេះ</button>
-        </div>
+    <div id="app-container" class="min-h-screen flex flex-col items-center justify-center p-4">
 
-        <!-- Auth Page (Name & PIN Setup) -->
-        <div id="auth-page" class="page flex justify-center items-center bg-gray-900/80 backdrop-blur-sm">
-            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-                <!-- Name Input -->
-                <div id="name-step">
-                    <h2 class="text-2xl font-bold mb-4">Create Your Profile</h2>
-                    <p class="text-gray-400 mb-6">Please enter your display name.</p>
-                    <input type="text" id="name-input" placeholder="Your Name" class="w-full bg-gray-700 text-white p-3 rounded-lg text-center mb-4" maxlength="15">
-                    <button id="submit-name-button" class="btn-fancy w-full">Next</button>
+        <!-- Home Screen: Create or Join Room -->
+        <div id="home-screen" class="w-full max-w-md">
+            <div class="bg-gray-800 rounded-2xl shadow-lg p-8">
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-white">YouTube Watch Party</h1>
+                    <p class="text-gray-400 mt-2">Create a room and watch videos with friends.</p>
                 </div>
-                <!-- PIN Setup -->
-                <div id="pin-setup-step" class="hidden">
-                    <h2 class="text-2xl font-bold mb-4">Set Your 4-Digit PIN</h2>
-                    <p class="text-gray-400 mb-6">This will be used to log in later.</p>
-                    <div id="pin-setup-container" class="flex justify-center gap-2 mb-4">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+
+                <form id="create-room-form" class="space-y-4 mt-6">
+                    <div>
+                        <label for="room-name" class="text-sm font-medium text-gray-300">Room Name</label>
+                        <input type="text" id="room-name" name="room-name" required placeholder="e.g., Movie Night" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-lg shadow-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
                     </div>
-                    <button id="submit-pin-setup-button" class="btn-fancy w-full" disabled>Create PIN & Play</button>
-                </div>
-                 <!-- PIN Login -->
-                <div id="pin-login-step" class="hidden">
-                    <h2 class="text-2xl font-bold mb-4">Enter Your PIN</h2>
-                    <p id="pin-login-welcome" class="text-gray-400 mb-6">Welcome back!</p>
-                    <div id="pin-login-container" class="flex justify-center gap-2 mb-4">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                        <input type="password" class="pin-input bg-gray-700 rounded-lg" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    <div>
+                        <label for="youtube-link" class="text-sm font-medium text-gray-300">YouTube Video Link</label>
+                        <input type="url" id="youtube-link" name="youtube-link" required placeholder="https://www.youtube.com/watch?v=..." class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-lg shadow-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
                     </div>
-                    <p id="pin-error" class="text-red-500 h-6"></p>
+                    <button type="submit" id="create-room-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500">
+                        Create Room
+                    </button>
+                </form>
+                 <div id="error-message" class="text-red-400 text-center text-sm mt-2"></div>
+
+                 <div class="mt-8">
+                    <h2 class="text-xl font-semibold text-center text-white">Or Join a Room</h2>
+                    <div id="room-list-container" class="mt-4 bg-gray-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+                        <ul id="room-list" class="space-y-2">
+                            <li class="text-gray-400 text-center">Loading rooms...</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Home Page (Lobby) -->
-        <div id="home-page" class="page p-4">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h1 class="text-3xl font-bold">Game Lobby</h1>
-                    <div id="user-info" class="text-yellow-400">Loading...</div>
-                </div>
-                <button id="create-room-button" class="btn-fancy">Create Room</button>
-            </div>
-            <div id="room-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Room items will be populated here -->
-            </div>
-        </div>
 
-        <!-- Game Page -->
-        <div id="game-page" class="page flex flex-col justify-between p-2 lg:p-4 bg-green-900/70 bg-cover" style="background-image: url('https://www.transparenttextures.com/patterns/felt.png');">
-            <!-- Top Bar -->
-            <div class="flex justify-between items-center px-4">
-                 <button id="leave-room-button" class="btn-secondary">Leave Room</button>
-                 <div id="game-status" class="text-center text-xl font-bold text-white bg-black/50 px-4 py-2 rounded-lg">Waiting for players...</div>
-                 <div class="text-lg font-semibold">Room ID: <span id="room-id-display"></span></div>
-            </div>
-
-            <!-- Game Table -->
-            <div class="relative flex-grow flex items-center justify-center">
-                <!-- Central Piles -->
-                <div class="absolute flex gap-8">
-                    <div id="draw-pile-container" class="game-pile"></div>
-                    <div id="discard-pile-container" class="game-pile"></div>
+        <!-- Room Screen: Video Player -->
+        <div id="room-screen" class="w-full max-w-4xl hidden">
+            <div class="bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
+                    <h2 class="text-2xl font-bold text-white mb-2 sm:mb-0">Room: <span id="room-name-display" class="text-indigo-400"></span></h2>
+                    <button id="leave-room-btn" class="self-start sm:self-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition">Leave Room</button>
                 </div>
-                <!-- Player slots (max 6 players) -->
-                <div id="player-slots-container" class="grid grid-cols-3 gap-4 w-full max-w-7xl mx-auto">
-                    <!-- Player slots will be dynamically added here -->
+                 <div class="player-container bg-black rounded-lg overflow-hidden">
+                    <div id="player"></div>
                 </div>
-            </div>
-            
-            <!-- Action Bar -->
-            <div id="action-bar" class="flex justify-center items-center gap-4 p-2 h-24">
-                 <!-- Actions will be populated here -->
-            </div>
-        </div>
-
-        <!-- Notification Overlay -->
-        <div id="notification-overlay" class="hidden fixed inset-0 bg-black/70 flex justify-center items-center z-50">
-            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl text-center max-w-sm">
-                <h3 id="notification-title" class="text-2xl font-bold mb-4">Notification</h3>
-                <p id="notification-message" class="text-gray-300 mb-6">Message goes here.</p>
-                <div id="notification-buttons">
-                    <!-- Buttons will be added dynamically -->
+                <div class="mt-4 text-center">
+                    <p class="text-gray-400">Share this page's URL to invite others!</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Orientation Blocker -->
-    <div id="orientation-blocker" class="fixed inset-0 bg-gray-900 text-white flex-col justify-center items-center text-center p-4 z-50">
-        <svg class="w-16 h-16 mb-4 transform -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-        <h2 class="text-2xl font-bold">Please Rotate Your Device</h2>
-        <p>This game is best played in landscape mode.</p>
     </div>
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, onValue, set, get, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getDatabase, ref, set, onValue, off, update } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
 
-        // --- IMPORTANT ---
-        // REPLACE THIS WITH YOUR WEB APP'S FIREBASE CONFIGURATION
+        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCd7dKd-WeIyiC_i2PbgeWrshEXP5tDFbY",
             authDomain: "koyreachtopup.firebaseapp.com",
             databaseURL: "https://koyreachtopup-default-rtdb.firebaseio.com",
             projectId: "koyreachtopup",
-            storageBucket: "koyreachtopup.firebasestorage.app",
+            storageBucket: "koyreachtopup.appspot.com",
             messagingSenderId: "878581988750",
             appId: "1:878581988750:web:96b6a6910148986ba478df",
         };
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        
-        // App State
-        let currentUser = { id: null, name: null, money: 0, currentRoomId: null };
-        let currentRoomListener = null;
-        let roomListListener = null;
-        let inactivityTimer = null;
-        let turnTimer = null;
-        
-        // DOM Elements
-        const pages = {
-            welcome: document.getElementById('welcome-page'),
-            auth: document.getElementById('auth-page'),
-            home: document.getElementById('home-page'),
-            game: document.getElementById('game-page'),
-        };
-        const playButton = document.getElementById('play-button');
-        const nameInput = document.getElementById('name-input');
-        const submitNameButton = document.getElementById('submit-name-button');
-        const nameStep = document.getElementById('name-step');
-        const pinSetupStep = document.getElementById('pin-setup-step');
-        const pinLoginStep = document.getElementById('pin-login-step');
-        const pinSetupContainer = document.getElementById('pin-setup-container');
-        const submitPinSetupButton = document.getElementById('submit-pin-setup-button');
-        const pinLoginContainer = document.getElementById('pin-login-container');
-        const createRoomButton = document.getElementById('create-room-button');
-        const leaveRoomButton = document.getElementById('leave-room-button');
+        const database = getDatabase(app);
 
-        // --- UTILITY FUNCTIONS ---
-        function navigateTo(pageName) {
-            Object.values(pages).forEach(p => p.classList.remove('active'));
-            if (pages[pageName]) pages[pageName].classList.add('active');
-        }
-        function generateId(length = 6) { return Math.random().toString(36).substring(2, 2 + length).toUpperCase(); }
-        function showNotification(title, message, buttons = [{ text: 'OK', action: hideNotification }]) {
-            document.getElementById('notification-title').innerText = title;
-            document.getElementById('notification-message').innerText = message;
-            const btnContainer = document.getElementById('notification-buttons');
-            btnContainer.innerHTML = '';
-            buttons.forEach(btnInfo => {
-                const button = document.createElement('button');
-                button.innerText = btnInfo.text;
-                button.className = (btnInfo.class || 'btn-fancy') + ' mx-2';
-                button.onclick = btnInfo.action;
-                btnContainer.appendChild(button);
-            });
-            document.getElementById('notification-overlay').classList.remove('hidden');
-        }
-        function hideNotification() { document.getElementById('notification-overlay').classList.add('hidden'); }
+        // --- DOM Elements ---
+        const homeScreen = document.getElementById('home-screen');
+        const roomScreen = document.getElementById('room-screen');
+        const createRoomForm = document.getElementById('create-room-form');
+        const roomNameInput = document.getElementById('room-name');
+        const youtubeLinkInput = document.getElementById('youtube-link');
+        const roomNameDisplay = document.getElementById('room-name-display');
+        const leaveRoomBtn = document.getElementById('leave-room-btn');
+        const errorMessage = document.getElementById('error-message');
+        const roomList = document.getElementById('room-list');
 
-        // --- AUTH & USER MANAGEMENT ---
-        async function initializeUser() {
-            let userId = localStorage.getItem('sikuthai_userId');
-            if (!userId) {
-                navigateTo('auth');
-                nameStep.classList.remove('hidden');
-                pinSetupStep.classList.add('hidden');
-                pinLoginStep.classList.add('hidden');
-            } else {
-                const userSnapshot = await get(ref(db, `users/${userId}`));
-                if (userSnapshot.exists()) {
-                    currentUser.id = userId;
-                    currentUser.name = userSnapshot.val().name;
-                    document.getElementById('pin-login-welcome').innerText = `Welcome back, ${currentUser.name}!`;
-                    navigateTo('auth');
-                    nameStep.classList.add('hidden');
-                    pinSetupStep.classList.add('hidden');
-                    pinLoginStep.classList.remove('hidden');
-                    pinLoginContainer.querySelectorAll('input')[0].focus();
-                } else {
-                    localStorage.removeItem('sikuthai_userId');
-                    initializeUser();
-                }
+
+        // --- YouTube Player Logic ---
+        let player;
+        let isPlayerReady = false;
+        let currentRoomRef = null;
+        let isHostUpdating = false; // Flag to prevent event loops
+
+        // This function creates an <iframe> (and YouTube player) after the API code downloads.
+        window.onYouTubeIframeAPIReady = function() {
+            isPlayerReady = true;
+            console.log("YouTube Iframe API is ready.");
+            // If we are already in a room when API loads, initialize player
+            const roomId = getRoomIdFromUrl();
+            if (roomId) {
+                joinRoom(roomId);
             }
-        }
-        function handlePinInput(container, onComplete) {
-            const inputs = container.querySelectorAll('input');
-            inputs.forEach((input, index) => {
-                input.addEventListener('keydown', e => {
-                    if (e.key >= 0 && e.key <= 9) {
-                        inputs[index].value = '';
-                        setTimeout(() => { if (index < inputs.length - 1) inputs[index + 1].focus(); }, 10);
-                    } else if (e.key === 'Backspace') {
-                        setTimeout(() => { if (index > 0) inputs[index - 1].focus(); }, 10);
+        };
+
+        function initializePlayer(videoId) {
+            if (player) {
+                player.loadVideoById(videoId);
+            } else {
+                player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: videoId,
+                    playerVars: {
+                        'playsinline': 1,
+                        'autoplay': 1,
+                        'controls': 1,
+                        'rel': 0,
+                    },
+                    events: {
+                        'onReady': onPlayerReady,
+                        'onStateChange': onPlayerStateChange
                     }
                 });
-                input.addEventListener('input', () => {
-                    const pin = Array.from(inputs).map(i => i.value).join('');
-                    if (pin.length === 4) onComplete(pin);
-                });
-            });
+            }
         }
-        submitNameButton.addEventListener('click', () => {
-            if (nameInput.value.trim().length < 3) {
-                showNotification('Invalid Name', 'Name must be at least 3 characters.');
-                return;
-            }
-            nameStep.classList.add('hidden');
-            pinSetupStep.classList.remove('hidden');
-            pinSetupContainer.querySelectorAll('input')[0].focus();
-        });
-        handlePinInput(pinSetupContainer, pin => {
-            submitPinSetupButton.disabled = false;
-            submitPinSetupButton.onclick = async () => {
-                const newUserId = generateId(10);
-                const newUser = { name: nameInput.value.trim(), pin, money: 5000 };
-                await set(ref(db, `users/${newUserId}`), newUser);
-                localStorage.setItem('sikuthai_userId', newUserId);
-                currentUser = { id: newUserId, ...newUser };
-                loginSuccess();
-            };
-        });
-        handlePinInput(pinLoginContainer, async pin => {
-            const userRef = ref(db, `users/${currentUser.id}`);
-            const userSnapshot = await get(userRef);
-            if (userSnapshot.exists() && userSnapshot.val().pin === pin) {
-                currentUser = { id: currentUser.id, ...userSnapshot.val() };
-                loginSuccess();
-            } else {
-                document.getElementById('pin-error').innerText = 'Incorrect PIN.';
-                pinLoginContainer.querySelectorAll('input').forEach(i => i.value = '');
-                pinLoginContainer.querySelectorAll('input')[0].focus();
-                setTimeout(() => document.getElementById('pin-error').innerText = '', 2000);
-            }
-        });
-        function loginSuccess() {
-            const userStatusRef = ref(db, `users/${currentUser.id}/online`);
-            onValue(ref(db, '.info/connected'), snap => {
-                if (snap.val() === true) {
-                    set(userStatusRef, true);
-                    onDisconnect(userStatusRef).set(false);
-                    onDisconnect(ref(db, `users/${currentUser.id}/currentRoomId`)).set(null);
-                }
-            });
-            navigateTo('home');
-            startHomePageListeners();
+        
+        function onPlayerReady(event) {
+            console.log("Player is ready.");
         }
 
-        // --- HOME PAGE (LOBBY) ---
-        function startHomePageListeners() {
-            const userInfoDiv = document.getElementById('user-info');
-            onValue(ref(db, `users/${currentUser.id}`), snap => {
-                if (snap.exists()) {
-                    const userData = snap.val();
-                    currentUser.money = userData.money;
-                    userInfoDiv.innerHTML = `<span class="font-semibold">${currentUser.name}</span> | <span class="text-green-400 font-bold">${currentUser.money} R</span>`;
-                }
-            });
-            const roomsRef = ref(db, 'rooms');
-            if (roomListListener) roomListListener();
-            roomListListener = onValue(roomsRef, snapshot => {
-                const roomListDiv = document.getElementById('room-list');
-                roomListDiv.innerHTML = '';
-                const rooms = snapshot.val();
-                if (rooms) {
-                    Object.entries(rooms).forEach(([roomId, roomData]) => {
-                        const playerCount = Object.keys(roomData.players || {}).length;
-                        if (playerCount > 0 && playerCount < 6) {
-                            const roomCard = document.createElement('div');
-                            roomCard.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-lg';
-                            roomCard.innerHTML = `
-                                <div><h3 class="text-xl font-bold">Room ${roomId}</h3><p class="text-gray-400">Host: ${roomData.players[roomData.hostId]?.name || 'Unknown'}</p></div>
-                                <div class="text-center"><span class="text-2xl font-bold">${playerCount}/6</span><p class="text-sm">${roomData.status}</p></div>
-                                <button class="btn-secondary join-room-btn" data-room-id="${roomId}">Join</button>`;
-                            roomListDiv.appendChild(roomCard);
-                        }
+        // This function is called whenever the player's state changes.
+        function onPlayerStateChange(event) {
+            if (isHostUpdating) return; 
+            
+            if (currentRoomRef) {
+                const currentTime = player.getCurrentTime();
+                const state = event.data;
+                 console.log(`Local state change detected: ${state}. Updating Firebase.`);
+
+                // Broadcast user actions (play, pause, seek/buffer).
+                if ([YT.PlayerState.PLAYING, YT.PlayerState.PAUSED, YT.PlayerState.BUFFERING].includes(state)) {
+                     update(currentRoomRef, {
+                        state: state,
+                        currentTime: currentTime,
+                        lastUpdated: Date.now()
                     });
                 }
-                document.querySelectorAll('.join-room-btn').forEach(btn => btn.onclick = () => joinRoom(btn.dataset.roomId));
+            }
+        }
+
+        // --- Room Management & Firebase Sync ---
+        function createRoom(e) {
+            e.preventDefault();
+            errorMessage.textContent = '';
+            const roomName = roomNameInput.value.trim();
+            const youtubeLink = youtubeLinkInput.value.trim();
+
+            if (!roomName || !youtubeLink) return;
+
+            const videoId = parseYouTubeUrl(youtubeLink);
+            if (!videoId) {
+                errorMessage.textContent = 'Invalid YouTube URL. Please use a valid video or live stream link.';
+                return;
+            }
+
+            const sanitizedRoomName = roomName.replace(/[^a-zA-Z0-9-]/g, '-');
+            window.location.hash = sanitizedRoomName;
+
+            const roomRef = ref(database, 'rooms/' + sanitizedRoomName);
+            set(roomRef, {
+                videoId: videoId,
+                state: YT.PlayerState.PAUSED, // 2 - Start paused for better sync
+                currentTime: 0,
+                createdAt: Date.now()
             });
         }
-        createRoomButton.addEventListener('click', async () => {
-            const newRoomId = generateId();
-            const newRoom = {
-                hostId: currentUser.id, status: 'waiting', createdAt: Date.now(),
-                players: { [currentUser.id]: { name: currentUser.name, status: 'waiting' } }
-            };
-            await set(ref(db, `rooms/${newRoomId}`), newRoom);
-            joinRoom(newRoomId);
-        });
-        async function joinRoom(roomId) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (!roomSnapshot.exists()) return showNotification('Error', 'Room does not exist.');
-            const roomData = roomSnapshot.val();
-            const playerCount = Object.keys(roomData.players || {}).length;
-            if (playerCount >= 6 && !roomData.players[currentUser.id]) return showNotification('Room Full', 'Max 6 players.');
-            if (currentUser.money < 500) return showNotification('Insufficient Funds', 'You need 500 R to play.');
+        
+        function joinRoom(roomId) {
+            console.log(`Joining room: ${roomId}`);
+            if (currentRoomRef) {
+                off(currentRoomRef);
+            }
+            
+            homeScreen.classList.add('hidden');
+            roomScreen.classList.remove('hidden');
+            roomNameDisplay.textContent = roomId;
 
-            currentUser.currentRoomId = roomId;
-            await update(ref(db, `users/${currentUser.id}`), { currentRoomId: roomId });
-            await set(ref(db, `rooms/${roomId}/players/${currentUser.id}`), { name: currentUser.name, status: 'waiting' });
-            onDisconnect(ref(db, `rooms/${roomId}/players/${currentUser.id}`)).remove();
-            if (roomListListener) roomListListener();
-            navigateTo('game');
-            startGamePageListeners(roomId);
-        }
-
-        // --- GAME PAGE ---
-        function startGamePageListeners(roomId) {
-            document.getElementById('room-id-display').innerText = roomId;
-            const roomRef = ref(db, `rooms/${roomId}`);
-            if (currentRoomListener) currentRoomListener();
-            currentRoomListener = onValue(roomRef, (snapshot) => {
-                if (!snapshot.exists()) {
-                    leaveRoomCleanup();
-                    showNotification('Room Closed', 'The host has left.', [{ text: 'OK', action: () => { hideNotification(); navigateTo('home'); startHomePageListeners(); } }]);
+            currentRoomRef = ref(database, 'rooms/' + roomId);
+            
+            onValue(currentRoomRef, (snapshot) => {
+                const roomData = snapshot.val();
+                if (!roomData) {
+                    console.log("Room does not exist or was deleted.");
+                    leaveRoom();
                     return;
                 }
-                const roomData = snapshot.val();
-                renderGame(roomData, roomId);
-                resetInactivityTimer(roomId);
+
+                console.log("Received data from Firebase:", roomData);
+
+                if (!isPlayerReady) {
+                     console.log("Player not ready yet, waiting...");
+                     return;
+                }
+                
+                if (!player || player.getVideoData().video_id !== roomData.videoId) {
+                    initializePlayer(roomData.videoId);
+                }
+
+                if(!player) return;
+
+                isHostUpdating = true;
+                
+                const remoteState = roomData.state;
+                const localState = player.getPlayerState();
+
+                const timeDifference = Math.abs(player.getCurrentTime() - roomData.currentTime);
+                if (timeDifference > 2) { 
+                    console.log(`Syncing time. Remote: ${roomData.currentTime}, Local: ${player.getCurrentTime()}`);
+                    player.seekTo(roomData.currentTime, true);
+                }
+
+                if (remoteState !== localState) {
+                    console.log(`Syncing state. Remote: ${remoteState}, Local: ${localState}`);
+                    if (remoteState === YT.PlayerState.PLAYING) {
+                        player.playVideo();
+                    } else if (remoteState === YT.PlayerState.PAUSED) {
+                        player.pauseVideo();
+                    } else if (remoteState === YT.PlayerState.BUFFERING) {
+                         player.playVideo();
+                    }
+                }
+
+                setTimeout(() => {
+                    isHostUpdating = false;
+                }, 500);
             });
         }
-        function renderGame(roomData, roomId) {
-            const players = roomData.players || {};
-            const playerIds = Object.keys(players);
-            const slotsContainer = document.getElementById('player-slots-container');
-            slotsContainer.innerHTML = '';
+        
+        function leaveRoom() {
+            if (currentRoomRef) {
+                off(currentRoomRef);
+                currentRoomRef = null;
+            }
+            if (player) {
+                player.destroy();
+                player = null;
+                isPlayerReady = false;
+                document.getElementById('player').innerHTML = ''; 
+                loadYouTubeAPI();
+            }
+            
+            window.location.hash = '';
+            roomScreen.classList.add('hidden');
+            homeScreen.classList.remove('hidden');
+        }
 
-            playerIds.forEach(playerId => {
-                const player = players[playerId];
-                const slot = document.createElement('div');
-                slot.className = `player-slot`;
-                if (playerId === roomData.turn) slot.classList.add('active-turn');
-                
-                const cardCount = player.cards ? player.cards.length : (player.cardCount || 0);
+        function displayRooms() {
+            const roomsRef = ref(database, 'rooms/');
+            onValue(roomsRef, (snapshot) => {
+                roomList.innerHTML = '';
+                const rooms = snapshot.val();
+                let hasRooms = false;
+                if (rooms) {
+                    Object.keys(rooms).forEach(roomId => {
+                        const roomData = rooms[roomId];
+                        const oneDay = 24 * 60 * 60 * 1000;
+                        if (Date.now() - roomData.createdAt > oneDay) {
+                            return; 
+                        }
 
-                const handClass = playerId === currentUser.id ? 'is-current-user' : '';
-                const cardsHtml = (playerId === currentUser.id && player.cards)
-                    ? player.cards.map((card, index) => renderCard(card, true, index)).join('')
-                    : Array(cardCount).fill(0).map(() => renderCard({}, false)).join('');
-
-                slot.innerHTML = `
-                    <div class="text-center">
-                        <div class="font-bold text-lg">${player.name}</div>
-                        <div class="text-sm text-yellow-400">Cards: ${cardCount}</div>
-                    </div>
-                    <div class="flex justify-center items-end player-hand ${handClass}" style="padding-right: ${cardCount > 1 ? '55px': '0'};">${cardsHtml}</div>`;
-                slotsContainer.appendChild(slot);
-            });
-
-            if (roomData.status === 'playing') {
-                const myHand = document.querySelector('.is-current-user');
-                if(myHand) {
-                    myHand.querySelectorAll('.card').forEach((cardEl, index) => {
-                        cardEl.onclick = () => playCard(roomId, index);
+                        hasRooms = true;
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <a href="#${roomId}" class="block bg-gray-600 hover:bg-indigo-500 p-3 rounded-lg transition text-white font-medium">
+                                ${roomId.replace(/-/g, ' ')}
+                            </a>
+                        `;
+                        roomList.appendChild(li);
                     });
                 }
-            }
 
-            // Render piles
-            const topDiscard = roomData.discardPile ? roomData.discardPile[roomData.discardPile.length - 1] : null;
-            document.getElementById('discard-pile-container').innerHTML = topDiscard ? renderCard(topDiscard, true) : '';
-            document.getElementById('draw-pile-container').innerHTML = roomData.drawPile?.length > 0 ? `<div class="w-full h-full cursor-pointer">${renderCard({}, false)}<div class="absolute text-white font-bold text-2xl bg-black/50 rounded-full px-2">${roomData.drawPile.length}</div></div>` : '';
-            
-            if (roomData.drawPile?.length > 0) {
-                 document.getElementById('draw-pile-container').onclick = () => drawCard(roomId);
-            }
-
-            document.getElementById('game-status').textContent = roomData.message || roomData.status;
-
-            // Action Bar
-            const actionBar = document.getElementById('action-bar');
-            actionBar.innerHTML = '';
-            if (roomData.status === 'waiting' && playerIds.length >= 2 && roomData.hostId === currentUser.id) {
-                const startBtn = document.createElement('button');
-                startBtn.className = 'btn-fancy';
-                startBtn.innerText = 'Start Game';
-                startBtn.onclick = () => startGame(roomId);
-                actionBar.appendChild(startBtn);
-            } else if (roomData.status === 'finished') {
-                const playAgainBtn = document.createElement('button');
-                playAgainBtn.className = 'btn-fancy';
-                const hasVoted = roomData.playAgainVotes && roomData.playAgainVotes[currentUser.id];
-                playAgainBtn.innerText = hasVoted ? 'Waiting...' : 'Play Again';
-                playAgainBtn.disabled = hasVoted;
-                playAgainBtn.onclick = () => votePlayAgain(roomId);
-                actionBar.appendChild(playAgainBtn);
-            }
-        }
-        function renderCard(card, isVisible, index = -1) {
-            const suitSymbols = { 'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠' };
-            const suitColor = (card.suit === 'H' || card.suit === 'D') ? 'text-red-600' : 'text-black';
-            const back = `<div class="card-face card-back"></div>`;
-            const front = `
-                <div class="card-face card-front">
-                    <div class="self-start ${suitColor}"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
-                    <div class="${suitColor}"><span class="text-3xl">${suitSymbols[card.suit]}</span></div>
-                    <div class="self-end ${suitColor} transform rotate-180"><span class="card-rank">${card.rank}</span><span class="card-suit">${suitSymbols[card.suit]}</span></div>
-                </div>`;
-            return `<div class="card" data-index="${index}"><div class="card-inner" style="transform: ${isVisible ? 'none' : 'rotateY(180deg)'}">${front}${back}</div></div>`;
-        }
-        async function leaveRoom() {
-            if (!currentUser.currentRoomId) return;
-            const roomId = currentUser.currentRoomId;
-            leaveRoomCleanup();
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnapshot = await get(roomRef);
-            if (roomSnapshot.exists()) {
-                const roomData = roomSnapshot.val();
-                await remove(ref(db, `rooms/${roomId}/players/${currentUser.id}`));
-                const remainingPlayers = Object.keys(roomData.players || {}).filter(id => id !== currentUser.id);
-                if (remainingPlayers.length === 0) await remove(roomRef);
-                else if (roomData.hostId === currentUser.id) await update(roomRef, { hostId: remainingPlayers[0] });
-            }
-            navigateTo('home');
-            startHomePageListeners();
-        }
-        leaveRoomButton.addEventListener('click', () => {
-             showNotification('Leave Room', 'Are you sure?', [
-                { text: 'Yes', action: leaveRoom, class: 'btn-secondary' }, { text: 'Cancel', action: hideNotification }
-            ]);
-        });
-        function leaveRoomCleanup() {
-             if (currentRoomListener) { currentRoomListener(); currentRoomListener = null; }
-             clearTimeout(inactivityTimer);
-             clearTimeout(turnTimer);
-             update(ref(db, `users/${currentUser.id}`), { currentRoomId: null });
-             currentUser.currentRoomId = null;
-        }
-
-        // --- NEW GAME LOGIC (CRAZY EIGHTS STYLE) ---
-        function createDeck() {
-            const suits = ['H', 'D', 'C', 'S'];
-            const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-            let deck = [];
-            ranks.forEach(rank => suits.forEach(suit => deck.push({ rank, suit })));
-            return deck;
-        }
-        function shuffleDeck(deck) {
-            for (let i = deck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [deck[i], deck[j]] = [deck[j], deck[i]];
-            }
-            return deck;
-        }
-        async function startGame(roomId) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnap = await get(roomRef);
-            if (!roomSnap.exists()) return;
-            const roomData = roomSnap.val();
-            const playerIds = Object.keys(roomData.players);
-            
-            const updates = {};
-            for (const id of playerIds) {
-                const pSnap = await get(ref(db, `users/${id}`));
-                if (pSnap.val().money < 500) return showNotification('Error', `${roomData.players[id].name} needs 500 R to play.`);
-                updates[`users/${id}/money`] = pSnap.val().money - 500;
-            }
-            await update(ref(db), updates);
-
-            let deck = shuffleDeck(createDeck());
-            const updatedPlayers = {};
-            playerIds.forEach(id => {
-                updatedPlayers[id] = { ...roomData.players[id], cards: deck.splice(0, 7), cardCount: 7 };
-            });
-
-            let discardPile = [deck.pop()];
-            // Ensure starting card is not special
-            while(['A', 'Q', '2', '8'].includes(discardPile[0].rank)) {
-                deck.push(discardPile.pop());
-                deck = shuffleDeck(deck);
-                discardPile = [deck.pop()];
-            }
-
-            await update(roomRef, {
-                status: 'playing',
-                drawPile: deck,
-                discardPile: discardPile,
-                players: updatedPlayers,
-                turn: playerIds[0],
-                playDirection: 1, // 1 for clockwise, -1 for counter-clockwise
-                message: `${updatedPlayers[playerIds[0]].name}'s turn`,
-                pot: playerIds.length * 500,
-                activeSuit: discardPile[0].suit,
-                playAgainVotes: null,
+                if (!hasRooms) {
+                    roomList.innerHTML = '<li class="text-gray-400 text-center">No active rooms. Create one!</li>';
+                }
             });
         }
-        async function playCard(roomId, cardIndex) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnap = await get(roomRef);
-            if (!roomSnap.exists()) return;
-            let roomData = roomSnap.val();
-            
-            if (roomData.turn !== currentUser.id || roomData.status !== 'playing') return;
 
-            const player = roomData.players[currentUser.id];
-            const card = player.cards[cardIndex];
-            const topDiscard = roomData.discardPile[roomData.discardPile.length-1];
+        // --- URL and Utilities ---
+        function getRoomIdFromUrl() {
+            return window.location.hash.substring(1);
+        }
+        
+        function parseYouTubeUrl(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
 
-            const isValid = card.rank === '8' || card.rank === topDiscard.rank || card.suit === roomData.activeSuit;
-            if (!isValid) return showNotification("Invalid Move", "Card must match suit or rank.");
-
-            // Update state
-            player.cards.splice(cardIndex, 1);
-            player.cardCount = player.cards.length;
-            roomData.discardPile.push(card);
-            
-            const updates = {
-                [`players/${currentUser.id}`]: player,
-                discardPile: roomData.discardPile,
-            };
-
-            if (player.cardCount === 0) {
-                // WINNER
-                await update(roomRef, updates);
-                await endGame(roomId, currentUser.id);
-                return;
+        function handleRouteChange() {
+            const roomId = getRoomIdFromUrl();
+            if (roomId) {
+                if (isPlayerReady) {
+                    joinRoom(roomId);
+                }
+            } else {
+                leaveRoom();
             }
-            
-            // Handle special cards and calculate next turn
-            let nextTurnData;
-            switch(card.rank) {
-                case '8': // Wild
-                    updates.activeSuit = null; // Pause game until suit is chosen
-                    showNotification('Choose a Suit', 'You played a Wild Card!', [
-                        { text: '♥', action: () => setWildSuit(roomId, 'H'), class: 'btn-secondary text-red-500 text-2xl' },
-                        { text: '♦', action: () => setWildSuit(roomId, 'D'), class: 'btn-secondary text-red-500 text-2xl' },
-                        { text: '♣', action: () => setWildSuit(roomId, 'C'), class: 'btn-secondary text-2xl' },
-                        { text: '♠', action: () => setWildSuit(roomId, 'S'), class: 'btn-secondary text-2xl' },
-                    ]);
-                    break;
-                case 'A': // Reverse
-                    roomData.playDirection *= -1;
-                    updates.playDirection = roomData.playDirection;
-                    nextTurnData = calculateNextTurn(roomData);
-                    break;
-                case 'Q': // Skip
-                    nextTurnData = calculateNextTurn(roomData, 2); // Skip 1 player
-                    break;
-                case '2': // Draw 2
-                    nextTurnData = calculateNextTurn(roomData);
-                    const targetPlayer = roomData.players[nextTurnData.nextPlayerId];
-                    if (roomData.drawPile.length < 2) reshuffleDeck(roomData);
-                    targetPlayer.cards.push(...roomData.drawPile.splice(0,2));
-                    targetPlayer.cardCount = targetPlayer.cards.length;
-                    updates[`players/${nextTurnData.nextPlayerId}`] = targetPlayer;
-                    updates.drawPile = roomData.drawPile;
-                    // Skip the player who drew
-                    nextTurnData = calculateNextTurn({...roomData, turn: nextTurnData.nextPlayerId});
-                    break;
-                default: // Normal card
-                    updates.activeSuit = card.suit;
-                    nextTurnData = calculateNextTurn(roomData);
-                    break;
-            }
-            
-            if (nextTurnData) {
-                updates.turn = nextTurnData.nextPlayerId;
-                updates.message = nextTurnData.message;
-            }
-            await update(roomRef, updates);
         }
-        async function drawCard(roomId) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnap = await get(roomRef);
-            if (!roomSnap.exists()) return;
-            let roomData = roomSnap.val();
-
-            if (roomData.turn !== currentUser.id || roomData.status !== 'playing') return;
-            if (roomData.drawPile.length === 0) {
-                reshuffleDeck(roomData);
-            }
-            if (roomData.drawPile.length === 0) return showNotification("Empty Deck", "No cards to draw.");
-
-            const player = roomData.players[currentUser.id];
-            player.cards.push(roomData.drawPile.pop());
-            player.cardCount = player.cards.length;
-
-            const nextTurnData = calculateNextTurn(roomData);
-
-            await update(roomRef, {
-                [`players/${currentUser.id}`]: player,
-                drawPile: roomData.drawPile,
-                turn: nextTurnData.nextPlayerId,
-                message: nextTurnData.message
-            });
-        }
-        function calculateNextTurn(roomData, skipCount = 1) {
-            const playerIds = Object.keys(roomData.players);
-            const currentIndex = playerIds.indexOf(roomData.turn);
-            const nextIndex = (currentIndex + (skipCount * roomData.playDirection) + playerIds.length) % playerIds.length;
-            const nextPlayerId = playerIds[nextIndex];
-            return { nextPlayerId, message: `${roomData.players[nextPlayerId].name}'s turn`};
-        }
-        async function setWildSuit(roomId, suit) {
-            hideNotification();
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnap = await get(roomRef);
-            if (!roomSnap.exists()) return;
-            let roomData = roomSnap.val();
-            const nextTurnData = calculateNextTurn(roomData);
-            await update(roomRef, {
-                activeSuit: suit,
-                turn: nextTurnData.nextPlayerId,
-                message: `Suit is ${suit}. ${nextTurnData.message}`
-            });
-        }
-        function reshuffleDeck(roomData) {
-            const topCard = roomData.discardPile.pop();
-            roomData.drawPile = shuffleDeck(roomData.discardPile);
-            roomData.discardPile = [topCard];
-        }
-        async function endGame(roomId, winnerId) {
-            const roomRef = ref(db, `rooms/${roomId}`);
-            const roomSnap = await get(roomRef);
-            const roomData = roomSnap.val();
-            const winnerName = roomData.players[winnerId].name;
-            const pot = roomData.pot || 0;
-
-            const winnerRef = ref(db, `users/${winnerId}`);
-            const winnerSnap = await get(winnerRef);
-            await update(winnerRef, { money: (winnerSnap.val().money || 0) + pot });
-
-            await update(roomRef, { status: 'finished', turn: null, message: `${winnerName} wins the round!` });
-        }
-        async function votePlayAgain(roomId) {
-            await set(ref(db, `rooms/${roomId}/playAgainVotes/${currentUser.id}`), true);
-            const roomSnap = await get(ref(db, `rooms/${roomId}`));
-            const roomData = roomSnap.val();
-            const votes = Object.keys(roomData.playAgainVotes || {}).length;
-            const players = Object.keys(roomData.players || {}).length;
-            if (votes === players) startGame(roomId);
+        
+        function loadYouTubeAPI() {
+            if (window.YT) return;
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
 
-        // --- TIMERS & INIT ---
-        function resetInactivityTimer(roomId) {
-             clearTimeout(inactivityTimer);
-             inactivityTimer = setTimeout(() => {
-                 showNotification('Inactivity Kick', 'Removed for inactivity.', [
-                     { text: 'OK', action: () => { hideNotification(); leaveRoom(); } }
-                 ]);
-             }, 60000); // 60 seconds
-        }
-        playButton.addEventListener('click', initializeUser);
-        window.addEventListener('load', () => {
-             const lastUserId = localStorage.getItem('sikuthai_userId');
-             if (lastUserId) {
-                 get(ref(db, `users/${lastUserId}/currentRoomId`)).then(snap => {
-                     if (snap.exists() && snap.val() !== null) initializeUser();
-                 })
-             }
-        });
+        // --- Event Listeners ---
+        createRoomForm.addEventListener('submit', createRoom);
+        leaveRoomBtn.addEventListener('click', leaveRoom);
+        window.addEventListener('hashchange', handleRouteChange);
+
+        // --- Initial Load ---
+        loadYouTubeAPI();
+        displayRooms(); // Fetch and display active rooms
+        handleRouteChange(); // Check route on initial page load
+
     </script>
 </body>
 </html>
